@@ -495,7 +495,7 @@ function ls_cmd_kill(numeric, victim)
       else
         local killmessage = KILLMESSAGES[math.random(table.getn(KILLMESSAGES))]
 
-        ls_chanmsg(channel, ls_format_player(channel, victimnumeric, true) .. killmessage)
+        ls_chanmsg(channel, ls_format_player(channel, victimnumeric, true) .. " " .. killmessage)
       end
     end
 
