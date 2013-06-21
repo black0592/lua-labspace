@@ -120,7 +120,7 @@ function handler(target, revent, ...)
 
       ls_flush_modes(channel)
     end
-  elseif revent == "irc_onmsg" then
+  elseif revent == "irc_onmsg" or revent == "irc_onnotice" then
     local numeric, message = ...
 
     local tokens = ls_split_message(message)
@@ -1266,7 +1266,7 @@ function ls_advance_state(channel, delayed)
       for _, scientist in pairs(scientists) do
         if scientist == active_scientist then
           ls_set_active(channel, scientist, true)
-          ls_notice(scientist, "It's your turn to select a citizen to kill. Use /msg " .. BOTNICK .. " kill <nick> to kill someone.")
+          ls_notice(scientist, "It's your turn to select a citizen to kill. Use /notice " .. BOTNICK .. " kill <nick> to kill someone.")
         else
           ls_set_active(channel, scientist, false)
           ls_notice(scientist, ls_format_player(channel, active_scientist) .. " is choosing a victim.")
@@ -1305,7 +1305,7 @@ function ls_advance_state(channel, delayed)
       for _, investigator in pairs(investigators) do
         if investigator == active_investigator then
           ls_set_active(channel, investigator, true)
-          ls_notice(investigator, "You need to choose someone to investigate: /msg " .. BOTNICK .. " investigate <nick>")
+          ls_notice(investigator, "You need to choose someone to investigate: /notice " .. BOTNICK .. " investigate <nick>")
         else
           ls_set_active(channel, investigator, false)
           ls_notice(investigator, "Another investigator is choosing a target.")
@@ -1342,7 +1342,7 @@ function ls_advance_state(channel, delayed)
         ls_set_vote(channel, player, nil)
       end
 
-      ls_chanmsg(channel, "It's now up to the citizens to vote who to lynch (via /msg " .. BOTNICK .. " vote <nick>).")
+      ls_chanmsg(channel, "It's now up to the citizens to vote who to lynch (via /notice " .. BOTNICK .. " vote <nick>).")
       ls_set_timeout(channel, 120)
     elseif ls_timeout_exceeded(channel) or table.getn(missing_votes) == 0 then
       local votes = {}
