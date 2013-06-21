@@ -1267,10 +1267,12 @@ function ls_check_alive(channel)
   for _, player in pairs(ls_get_players(channel)) do
     local seen = ls_get_seen(channel, player)
 
-    if seen < os.time() - 120 then
-      table.insert(dead_players, player)
-    elseif seen < os.time() - 60 then
-      table.insert(idle_players, player)
+    if seen then
+      if seen < os.time() - 120 then
+        table.insert(dead_players, player)
+      elseif seen < os.time() - 60 then
+        table.insert(idle_players, player)
+      end
     end
   end
 
