@@ -17,7 +17,6 @@
 
 -- TODO
 -- logging
--- addchan: only allow existing chans
 
 -- Ideas:
 -- scientists vote on kills
@@ -670,6 +669,11 @@ end
 function ls_cmd_addchan(numeric, channel)
   if not channel then
     ls_notice(numeric, "Syntax: addchan <#channel>")
+    return
+  end
+
+  if not irc_getchaninfo(channel) then
+    ls_notice(numeric, "The specified channel does not exist.")
     return
   end
 
