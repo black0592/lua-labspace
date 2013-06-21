@@ -1095,6 +1095,7 @@ function ls_start_game(channel)
 
     if ls_get_role(channel, numeric) then
       ls_voice_player(channel, numeric)
+      ls_keepalive(channel, numeric)
     else
       ls_devoice_player(channel, numeric)
     end
