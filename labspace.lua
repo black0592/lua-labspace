@@ -110,6 +110,10 @@ function handler(target, revent, ...)
         ls_cmd_status(channel, numeric)
       elseif command == "!hl" then
         ls_cmd_hl(channel, numeric)
+      elseif command == "!enable" then
+        ls_cmd_enable(channel, numeric)
+      elseif command == "!disable" then
+        ls_cmd_disable(channel, numeric)
       end
 
       ls_flush_modes(channel)
@@ -286,6 +290,11 @@ function ls_get_lasthl(channel)
   return ls_gamestate[channel]["lasthl"]
 end
 
+-- gets whether the bot is enabled
+function ls_get_enabled(channel)
+  return ls_gamestate[channel]["enabled"]
+end
+
 -- returns true if the game state delay was exceeded, false otherwise
 function ls_delay_exceeded(channel)
   return ls_get_delay(channel) < os.time()
@@ -321,6 +330,11 @@ end
 -- sets the !hl timestamp
 function ls_set_lasthl(channel, ts)
   ls_gamestate[channel]["lasthl"] = ts
+end
+
+-- sets whether the bot is enabled
+function ls_set_enabled(channel, enabled)
+  ls_gamestate[channel]["enabled"] = enabled
 end
 
 function ls_set_waitcount(channel, count)
@@ -455,6 +469,37 @@ function ls_cmd_hl(channel, numeric)
   if table.getn(numerics) > 0 then
     ls_chanmsg(channel, "HL: " .. ls_format_players(channel, numerics, false, true))
   end
+end
+
+function ls_cmd_enable(channel, numeric)
+  local chanuser = irc_getuserchanmodes(numeric, channel)
+
+  if not chanuser or not chanuser.opped then
+    ls_notice(channel, "You need to be opped to use this command.")
+    return
+  end
+
+  ls_set_enabled(channel, false)
+  ls_notice(numeric, "Game has been enabled.")
+end
+
+function ls_cmd_disable(channel, numeric)
+  local chanuser = irc_getuserchanmodes(numeric, channel)
+
+  if not chanuser or not chanuser.opped then
+    ls_notice(channel, "You need to be opped to use this command.")
+    return
+  end
+
+  if ls_game_in_progress(channel) then
+    ls_chanmsg(channel, ls_format_player(channel, numeric) .. " disabled the game.")
+  end
+
+  ls_stop_game(channel)
+  ls_flush_modes(channel)
+
+  ls_set_enabled(channel, false)
+  ls_notice(numeric, "Game has been disabled.")
 end
 
 function ls_cmd_kill(numeric, victim)
@@ -745,7 +790,7 @@ function ls_timer_announce_players(channel)
 end
 
 function ls_add_channel(channel)
-  ls_gamestate[channel] = { players = {}, state = "lobby", timeout = -1, delay = os.time() + 30, waitcount = 0, lasthl = 0 }
+  ls_gamestate[channel] = { players = {}, state = "lobby", timeout = -1, delay = os.time() + 30, waitcount = 0, lasthl = 0, enabled = true }
   irc_localjoin(ls_bot, channel)
   irc_simplechanmode(channel, "-m")
 end
@@ -798,6 +843,11 @@ function ls_add_player(channel, numeric, forced)
   end
 
   if not forced then
+    if not ls_get_enabled(channel) then
+      ls_notice(numeric, "Sorry, the game is currently disabled.")
+      return
+    end
+
     if ls_game_in_progress(channel) then
       ls_notice(numeric, "Sorry, you can't join the game right now.")
       return
