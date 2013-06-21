@@ -802,7 +802,7 @@ end
 function ls_add_channel(channel)
   ls_gamestate[channel] = { players = {}, state = "lobby", timeout = -1, delay = os.time() + 30, waitcount = 0, lasthl = 0, enabled = true }
   irc_localjoin(ls_bot, channel)
-  irc_simplechanmode(channel, "-m")
+  irc_localsimplechanmode(ls_bot, channel, "-m")
 end
 
 function ls_remove_channel(channel, part)
@@ -1088,7 +1088,7 @@ end
 function ls_start_game(channel)
   local players = ls_get_players(channel)
 
-  irc_simplechanmode(channel, "+m")
+  irc_localsimplechanmode(ls_bot, channel, "+m")
   
   for nick in channelusers_iter(channel, { nickpusher.numeric }) do
     local numeric = nick[1]
@@ -1158,7 +1158,7 @@ function ls_stop_game(channel)
     ls_remove_player(channel, player, true)
   end
 
-  irc_simplechanmode(channel, "-m")
+  irc_localsimplechanmode(ls_bot, channel, "-m")
 end
 
 -- makes sure people are not afk
