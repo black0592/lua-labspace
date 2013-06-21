@@ -1207,7 +1207,7 @@ function ls_start_game(channel)
   -- notify scientists about each other
   for _, scientist in pairs(ls_get_players(channel, "scientist")) do
     for _, scientist_notify in pairs(ls_get_players(channel, "scientist")) do
-      if scientists ~= scientist_notify then
+      if scientist ~= scientist_notify then
         ls_notice(scientists_notify, ls_format_player(channel, scientist) .. " is also a scientist.")
       end
     end
