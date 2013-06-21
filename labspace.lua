@@ -135,6 +135,8 @@ function handler(target, revent, ...)
         ls_cmd_investigate(numeric, argument)
       elseif command == "vote" then
         ls_cmd_vote(numeric, argument)
+      elseif command == "guard" then
+        ls_cmd_guard(numeric, argument)
       elseif command == "smite" and onstaff(numeric) then
         ls_cmd_smite(numeric, argument)
       elseif command == "addchan" and ontlz(numeric) then
@@ -558,6 +560,14 @@ function ls_cmd_kill(numeric, victim)
 
   if math.random(100) > 85 then
     ls_chanmsg(channel, "The scientists' attack was not successful tonight. Nobody died.")
+  elseif ls_get_guarded(channel, victimnumeric) then
+    for _, player in pairs(ls_get_players(channel)) do
+      ls_set_trait(channel, player, "force", false)
+    end
+    
+    ls_set_guarded(channel, victimnumeric, false)
+
+    ls_chanmsg(channel, "The attack on " .. ls_format_player(channel, victimnumeric) .. " was deflected by a force field. The force field generator has now run out of power.")
   else
     ls_devoice_player(channel, victimnumeric)
 
@@ -690,6 +700,55 @@ function ls_cmd_vote(numeric, victim)
   ls_advance_state(channel)
 
   ls_flush_modes(channel)
+end
+
+function ls_cmd_guard(numeric, victim)
+  if not victim then
+    ls_notice(numeric, "Syntax: vote <nick>")
+    return
+  end
+
+  local channel = ls_chan_for_numeric(numeric)
+
+  if not channel then
+    ls_notice(numeric, "You haven't joined any game lobby.")
+    return
+  end
+
+  if not ls_get_trait(channel, numeric, "force") then
+    ls_notice(numeric, "Sorry, you need the force field generator to use this command.")
+    return
+  end
+
+  ls_keepalive(channel, numeric)
+
+  local victimnick = irc_getnickbynick(victim)
+
+  if not victimnick then
+    ls_notice(numeric, "Sorry, I don't know who that is.")
+    return
+  end
+
+  local victimnumeric = victimnick.numeric
+
+  if not ls_get_role(channel, victimnumeric) then
+    ls_notice(numeric, "Sorry, " .. ls_format_player(channel, victimnumeric) .. " isn't playing the game.")
+    return
+  end
+  
+  local target
+  
+  if victimnumeric == numeric then
+    target = "yourself"
+  else
+    target = ls_format_player(channel, victimnumeric)
+  end
+  
+  for _, player in pairs(ls_get_players(channel)) do
+    ls_set_guarded(channel, player, (player == victimnumeric))
+  end
+  
+  ls_notice(numeric, "You are now protecting " .. target .. ".")
 end
 
 function ls_cmd_smite(numeric, victim)
@@ -943,6 +1002,8 @@ function ls_remove_player(channel, numeric, forced)
 
   local announced = ls_get_announced(channel, numeric)
 
+  local force_field = ls_get_trait(channel, numeric, "force")
+  
   ls_set_role(channel, numeric, nil)
 
   ls_devoice_player(channel, numeric)
@@ -950,6 +1011,10 @@ function ls_remove_player(channel, numeric, forced)
   for _, player in pairs(ls_get_players(channel)) do
     if ls_get_vote(channel, player) == numeric then
       ls_set_vote(channel, player, nil)
+    end
+    
+    if force_field then
+      ls_set_guarded(channel, player, false)
     end
   end
 
@@ -994,8 +1059,13 @@ function ls_get_role(channel, numeric)
 end
 
 function ls_set_role(channel, numeric, role)
-  if not ls_gamestate[channel]["players"][numeric] then
-    ls_gamestate[channel]["players"][numeric] = { active = false, announced = false }
+  if not ls_gamestate[channel]["players"][numeric] or role == "lobby" then
+    ls_gamestate[channel]["players"][numeric] = {
+      active = false,
+      announced = false,
+      traits = {},
+      guarded = false
+    }
   end
 
   if role then
@@ -1007,6 +1077,22 @@ function ls_set_role(channel, numeric, role)
   if role and role ~= "lobby" then
     ls_notice(numeric, "Your role for this round is '" .. ls_format_role(role) .. "'.")
   end
+end
+
+function ls_get_trait(channel, numeric, trait)
+  return ls_gamestate[channel]["players"][numeric]["traits"][trait]
+end
+
+function ls_set_trait(channel, numeric, trait, enabled)
+  ls_gamestate[channel]["players"][numeric]["traits"][trait] = enabled
+end
+
+function ls_get_guarded(channel, numeric, guarded)
+  return ls_gamestate[channel]["players"][numeric]["guarded"]
+end
+
+function ls_set_guarded(channel, numeric, guarded)
+  ls_gamestate[channel]["players"][numeric]["guarded"] = guarded
 end
 
 function ls_get_seen(channel, numeric)
@@ -1141,6 +1227,13 @@ function ls_start_game(channel)
   for _, player in pairs(players) do
     ls_set_role(channel, player, "citizen")
   end
+  
+  -- give someone the force field generator
+  local force_owner = players[math.random(table.getn(players))]
+  ls_set_trait(channel, force_owner, "force", true)
+  ls_set_guarded(channel, force_owner, true)
+  ls_notice(force_owner, "You've found the \002force field generator\002. Use /notice " .. BOTNICK .. " guard <nick> to protect someone.")
+  ls_notice(force_owner, "You are currently protecting yourself.")
 
   ls_chanmsg(channel, "Roles have been assigned: " ..
     table.getn(ls_get_players(channel, "scientist")) .. "x " .. ls_format_role("scientist") .. ", " ..
@@ -1260,9 +1353,7 @@ function ls_advance_state(channel, delayed)
 
   if state == "kill" then
     if timeout == -1 then
-      local candidates = ls_get_players(channel, "scientist")
-      local active_index = math.random(table.getn(candidates))
-      local active_scientist = table.remove(candidates, active_index)
+      local active_scientist = scientists[math.random(table.getn(scientists))]
 
       for _, scientist in pairs(scientists) do
         if scientist == active_scientist then
@@ -1299,9 +1390,7 @@ function ls_advance_state(channel, delayed)
     end
 
     if timeout == -1 then
-      local candidates = ls_get_players(channel, "investigator")
-      local active_index = math.random(table.getn(candidates))
-      local active_investigator = table.remove(candidates, active_index)
+      local active_investigator = investigators[math.random(table.getn(investigators))]
 
       for _, investigator in pairs(investigators) do
         if investigator == active_investigator then
