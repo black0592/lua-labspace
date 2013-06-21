@@ -17,6 +17,7 @@
 
 -- TODO
 -- logging
+-- make idle notifications independent from game delay
 
 -- Ideas:
 -- scientists vote on kills
@@ -42,6 +43,7 @@ local ls_bot
 local ls_gamestate = {}
 local ls_db = {}
 local ls_lastsave = 0
+local ls_lastalivecheck = 0
 local ls_sched = Scheduler()
 
 function onload()
@@ -195,6 +197,14 @@ function ontick()
   for channel, _ in pairs(ls_gamestate) do
     ls_advance_state(channel, true)
     ls_flush_modes(channel)
+  end
+
+  if ls_lastalivecheck < os.time() - 30 then
+    ls_lastalivecheck = os.time()
+
+    for channel, _ in pairs(ls_gamestate) do
+      ls_check_alive(channel)
+    end
   end
 
   if ls_lastsave < os.time() - 60 then
@@ -1144,6 +1154,46 @@ function ls_stop_game(channel)
   irc_simplechanmode(channel, "-m")
 end
 
+-- makes sure people are not afk
+function ls_check_alive(channel)
+  if not ls_game_in_progress(channel) then
+    return
+  end
+
+  local dead_players = {}
+  local idle_players = {}
+
+  for _, player in pairs(ls_get_players(channel)) do
+    local seen = ls_get_seen(channel, player)
+
+    if seen < os.time() - 120 then
+      table.insert(dead_players, player)
+    elseif seen < os.time() - 60 then
+      table.insert(idle_players, player)
+    end
+  end
+
+  if table.getn(dead_players) > 0 then
+    local verb
+
+    if table.getn(dead_players) ~= 1 then
+      verb = "seem"
+    else
+      verb = "seems"
+    end
+
+    ls_chanmsg(channel, ls_format_players(channel, dead_players) .. " " .. verb .. " to be dead (AFK).")
+
+    for _, player in pairs(dead_players) do
+      ls_remove_player(channel, player, true)
+    end
+  end
+
+  if table.getn(idle_players) > 0 then
+    ls_chanmsg(channel, "Hi " .. ls_format_players(channel, idle_players) .. ", please say something if you're still alive.")
+  end
+end
+
 function ls_advance_state(channel, delayed)
   if delayed and not ls_delay_exceeded(channel) then
     return
@@ -1152,42 +1202,6 @@ function ls_advance_state(channel, delayed)
   ls_debug(channel, "ls_advance_state")
 
   ls_set_delay(channel, 30)
-
-  -- make sure people are not afk
-  if delayed and ls_game_in_progress(channel) then
-    local dead_players = {}
-    local idle_players = {}
-
-    for _, player in pairs(ls_get_players(channel)) do
-      local seen = ls_get_seen(channel, player)
-
-      if seen < os.time() - 120 then
-        table.insert(dead_players, player)
-      elseif seen < os.time() - 60 then
-        table.insert(idle_players, player)
-      end
-    end
-
-    if table.getn(dead_players) > 0 then
-      local verb
-
-      if table.getn(dead_players) ~= 1 then
-        verb = "seem"
-      else
-        verb = "seems"
-      end
-
-      ls_chanmsg(channel, ls_format_players(channel, dead_players) .. " " .. verb .. " to be dead (AFK).")
-
-      for _, player in pairs(dead_players) do
-        ls_remove_player(channel, player, true)
-      end
-    end
-
-    if table.getn(idle_players) > 0 then
-      ls_chanmsg(channel, "Hi " .. ls_format_players(channel, idle_players) .. ", please say something if you're still alive.")
-    end
-  end
 
   local players = ls_get_players(channel)
   local scientists = ls_get_players(channel, "scientist")
