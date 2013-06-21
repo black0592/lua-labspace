@@ -17,6 +17,7 @@
 
 -- TODO
 -- logging
+-- addchan: only allow existing chans
 
 -- Ideas:
 -- scientists vote on kills
@@ -281,6 +282,11 @@ function ls_get_delay(channel)
   return ls_gamestate[channel]["delay"]
 end
 
+-- gets the ts when !hl was last used
+function ls_get_lasthl(channel)
+  return ls_gamestate[channel]["lasthl"]
+end
+
 -- returns true if the game state delay was exceeded, false otherwise
 function ls_delay_exceeded(channel)
   return ls_get_delay(channel) < os.time()
@@ -311,6 +317,11 @@ end
 function ls_set_delay(channel, delay)
   ls_gamestate[channel]["delay"] = os.time() + delay
   ls_debug(channel, "changed gamestate delay to " .. delay)
+end
+
+-- sets the !hl timestamp
+function ls_set_lasthl(channel, ts)
+  ls_gamestate[channel]["lasthl"] = ts
 end
 
 function ls_set_waitcount(channel, count)
@@ -419,6 +430,13 @@ function ls_cmd_hl(channel, numeric)
     ls_notice(numeric, "Sorry, you need to be in the lobby to use this command.")
     return
   end
+
+  if ls_get_lasthl(channel) > os.time() - 300 then
+    ls_notice(numeric, "Sorry, you can only use that command once every 5 minute.")
+    return
+  end
+
+  ls_set_lasthl(channel, os.time())
 
   local numerics = {}
 
@@ -723,7 +741,7 @@ function ls_timer_announce_players(channel)
 end
 
 function ls_add_channel(channel)
-  ls_gamestate[channel] = { players = {}, state = "lobby", timeout = -1, delay = os.time() + 30, waitcount = 0 }
+  ls_gamestate[channel] = { players = {}, state = "lobby", timeout = -1, delay = os.time() + 30, waitcount = 0, lasthl = 0 }
   irc_localjoin(ls_bot, channel)
   irc_simplechanmode(channel, "-m")
 end
