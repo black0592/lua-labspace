@@ -863,8 +863,15 @@ function ls_add_player(channel, numeric, forced)
       return
     end
 
-    if not irc_nickonchan(numeric, channel) then
+    local chanuser = irc_getuserchanmodes(numeric, channel)
+
+    if not chanuser then
       ls_notice(numeric, "Sorry, you must be on the channel to use this command.")
+      return
+    end
+
+    if chanuser.opped then
+      ls_notice(channel, "You must not be opped to use this command.")
       return
     end
 
