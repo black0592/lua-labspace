@@ -568,6 +568,14 @@ function ls_cmd_kill(numeric, victim)
     ls_set_guarded(channel, victimnumeric, false)
 
     ls_chanmsg(channel, "The attack on " .. ls_format_player(channel, victimnumeric) .. " was deflected by a force field. The force field generator has now run out of power.")
+  elseif ls_get_trait(channel, victimnumeric, "infested") then
+    ls_devoice_player(channel, numeric)
+    ls_devoice_player(channel, victimnumeric)
+    
+    ls_remove_player(channel, numeric, true)
+    ls_remove_player(channel, victimnumeric, true)
+
+    ls_chanmsg(channel, "An alien bursts out of " .. ls_format_player(channel, victimnumeric) .. "'s chest just as " .. ls_format_player(channel, numeric) .. " was about to murder them, killing them both.")
   else
     ls_devoice_player(channel, victimnumeric)
 
@@ -1235,6 +1243,14 @@ function ls_start_game(channel)
   ls_notice(force_owner, "You've found the \002force field generator\002. Use /notice " .. BOTNICK .. " guard <nick> to protect someone.")
   ls_notice(force_owner, "You are currently protecting yourself.")
 
+  -- make someone infested if there are at least 6 citizens
+  if table.getn(players) > 6 then
+    local infested_player = players[math.random(table.getn(players))]
+    ls_set_trait(channel, infested_player, "infested", true)
+    ls_notice(infested_player, "You're infested with an \002alien parasite\002.")
+    ls_chanmsg(channel, "It's " .. ls_format_player(channel, infested_player) .. ".")
+  end
+  
   ls_chanmsg(channel, "Roles have been assigned: " ..
     table.getn(ls_get_players(channel, "scientist")) .. "x " .. ls_format_role("scientist") .. ", " ..
     table.getn(ls_get_players(channel, "investigator")) .. "x " .. ls_format_role("investigator") .. ", " ..
