@@ -1342,7 +1342,7 @@ function ls_check_alive(channel)
       verb = "seems"
     end
 
-    ls_chanmsg(channel, ls_format_players(channel, dead_players) .. " " .. verb .. " to be dead (AFK).")
+    ls_chanmsg(channel, ls_format_players(channel, dead_players, true) .. " " .. verb .. " to be dead (AFK).")
 
     for _, player in pairs(dead_players) do
       ls_remove_player(channel, player, true)
