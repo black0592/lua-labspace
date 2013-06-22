@@ -56,7 +56,7 @@ function onunload()
 end
 
 function onconnect()
-  ls_bot = irc_localregisteruserid(BOTNICK, "lab", "space", "For science!", BOTACCOUNT, BOTACCOUNTID, "+iXr", handler)
+  ls_bot = irc_localregisteruserid(BOTNICK, "labspace", "brought.to.you.by.science", "For science!", BOTACCOUNT, BOTACCOUNTID, "+iXr", handler)
   ls_join_channels()
 end
 
