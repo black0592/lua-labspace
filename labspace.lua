@@ -942,7 +942,7 @@ function ls_add_player(channel, numeric, forced)
     end
 
     if chanuser.opped then
-      ls_notice(channel, "You must not be opped to use this command.")
+      ls_notice(numeric, "You must not be opped to use this command.")
       return
     end
 
