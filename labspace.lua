@@ -56,7 +56,7 @@ function onunload()
 end
 
 function onconnect()
-  ls_bot = irc_localregisteruserid(BOTNICK, "lab", "space", "Labspace", BOTACCOUNT, BOTACCOUNTID, "+iXr", handler)
+  ls_bot = irc_localregisteruserid(BOTNICK, "lab", "space", "For science!", BOTACCOUNT, BOTACCOUNTID, "+iXr", handler)
   ls_join_channels()
 end
 
@@ -139,6 +139,8 @@ function handler(target, revent, ...)
         ls_cmd_guard(numeric, argument)
       elseif command == "smite" and onstaff(numeric) then
         ls_cmd_smite(numeric, argument)
+      elseif command == "killgame" and onstaff(numeric) then
+        ls_cmd_killgame(numeric, argument)
       elseif command == "addchan" and ontlz(numeric) then
         ls_cmd_addchan(numeric, argument)
       elseif command == "delchan" and ontlz(numeric) then
@@ -793,6 +795,28 @@ function ls_cmd_smite(numeric, victim)
   ls_flush_modes(channel)
 end
 
+function ls_cmd_killgame(numeric, channel)
+  if not channel then
+    ls_notice(numeric, "Syntax: smite <channel>")
+    return
+  end
+
+  if not ls_is_game_channel(channel) then
+    ls_notice(numeric, "I'm not on that channel.")
+    return
+  end
+
+  if table.getn(ls_get_players(channel)) == 0 then
+    ls_notice(numeric, "There's nobody playing the game.")
+    return
+  end
+
+  ls_chanmsg(channel, ls_format_player(channel, numeric) .. " set us up the bomb. Game over.")
+  ls_stop_game(channel)
+
+  ls_flush_modes(channel)
+end
+
 function ls_cmd_addchan(numeric, channel)
   if not channel then
     ls_notice(numeric, "Syntax: addchan <#channel>")
@@ -1255,6 +1279,20 @@ function ls_start_game(channel)
     ls_notice(infested_player, "You're infested with an \002alien parasite\002.")
   end
   
+  -- give someone the teleporter
+  local teleporter_candidates
+
+  if math.random(100) > 75 then
+    teleporter_candidates = ls_get_players(channel)
+  else
+    teleporter_candidates = ls_get_players(channel, "scientist")
+  end
+
+  local teleporter_owner = teleporter_candidates[math.random(table.getn(teleporter_candidates))]
+  ls_set_trait(channel, teleporter_owner, "teleporter", true)
+  ls_notice(teleporter_owner, "You've found the \002personal teleporter\002 (50% chance to evade lynching).")
+  ls_chanmsg(channel, ls_format_player(channel, teleporter_owner) .. " has it.")
+  
   ls_chanmsg(channel, "Roles have been assigned: " ..
     table.getn(ls_get_players(channel, "scientist")) .. "x " .. ls_format_role("scientist") .. ", " ..
     table.getn(ls_get_players(channel, "investigator")) .. "x " .. ls_format_role("investigator") .. ", " ..
@@ -1514,10 +1552,19 @@ function ls_advance_state(channel, delayed)
       local victim_index = math.random(table.getn(candidates))
       local victim = candidates[victim_index]
 
-      ls_devoice_player(channel, victim)
+      if ls_get_trait(channel, victim, "teleporter") and math.random(100) > 50 then
+        ls_chanmsg(channel, ls_format_player(channel, victim) .. " used his personal teleporter to escape the angry mob.")
+        
+        if math.random(100) > 50 then
+          ls_set_trait(channel, victim, "teleporter", false)
+          ls_notice(victim, "Your \002personal teleporter\002 was destroyed.")
+        end
+      else
+        ls_devoice_player(channel, victim)
 
-      ls_chanmsg(channel, ls_format_player(channel, victim, true) .. " " .. message_suffix)
-      ls_remove_player(channel, victim, true)
+        ls_chanmsg(channel, ls_format_player(channel, victim, true) .. " " .. message_suffix)
+        ls_remove_player(channel, victim, true)
+      end
 
       ls_set_state(channel, "kill")
       ls_advance_state(channel)
