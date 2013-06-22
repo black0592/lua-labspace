@@ -25,7 +25,7 @@
 local BOTNICK = "labspace"
 local BOTACCOUNT = "labspace"
 local BOTACCOUNTID = 5022574
-local BOTCHANNELS = { "#labspace" }
+local HOMECHANNEL = "#labspace"
 local MINPLAYERS = 6
 local MAXPLAYERS = 30
 local DEBUG = false
@@ -40,6 +40,7 @@ local KILLMESSAGES = {
 }
 
 local ls_bot
+local ls_hlbot
 local ls_gamestate = {}
 local ls_db = {}
 local ls_lastsave = 0
@@ -56,14 +57,15 @@ function onunload()
 end
 
 function onconnect()
-  ls_bot = irc_localregisteruserid(BOTNICK, "labspace", "brought.to.you.by.science", "For science!", BOTACCOUNT, BOTACCOUNTID, "+iXr", handler)
+  ls_bot = irc_localregisteruserid(BOTNICK, "labspace", "brought.to.you.by.science", "For science!", BOTACCOUNT, BOTACCOUNTID, "+iXr", gamehandler)
   ls_join_channels()
+  
+  ls_hlbot = irc_localregisteruser(BOTNICK .. "-hl", "will.spam", "for.food", "Got some change?", "labspace-hl", "+iX", highlighthandler)
+  irc_localjoin(ls_hlbot, HOMECHANNEL)
 end
 
 function ls_join_channels()
-  for _, channel in pairs(BOTCHANNELS) do
-    ls_add_channel(channel)
-  end
+  ls_add_channel(HOMECHANNEL)
 
   for _, channel in pairs(ls_db.channels) do
     if not ls_is_game_channel(channel) then
@@ -86,7 +88,7 @@ function ls_split_message(message)
   return tokens
 end
 
-function handler(target, revent, ...)
+function gamehandler(target, revent, ...)
   if revent == "irc_onchanmsg" then
     local numeric, channel, message = ...
 
@@ -153,6 +155,15 @@ function handler(target, revent, ...)
   elseif revent == "irc_onkillreconnect" then
     ls_bot = target
     ls_join_channels()
+  end
+end
+
+function highlighthandler(target, revent, ...)
+  if revent == "irc_onkilled" then
+    ls_hlbot = nil
+  elseif revent == "irc_onkillreconnect" then
+    ls_hlbot = target
+    ls_localjoin(ls_hlbot, HOMECHANNEL)
   end
 end
 
@@ -459,7 +470,7 @@ function ls_cmd_hl(channel, numeric)
     return
   end
 
-  if string.lower(channel) ~= "#labspace" then
+  if string.lower(channel) ~= string.lower(HOMECHANNEL) then
     ls_notice(numeric, "Sorry, you can't use this command here.")
     return
   end
@@ -476,13 +487,13 @@ function ls_cmd_hl(channel, numeric)
     end
 
     if table.getn(numerics) > 10 then
-      ls_chanmsg(channel, "HL: " .. ls_format_players(channel, numerics, false, true))
+      irc_localchanmsg(ls_hlbot, channel, "HL: " .. ls_format_players(channel, numerics, false, true))
       numerics = {}
     end
   end
 
   if table.getn(numerics) > 0 then
-    ls_chanmsg(channel, "HL: " .. ls_format_players(channel, numerics, false, true))
+    irc_localchanmsg(ls_hlbot, "HL: " .. ls_format_players(channel, numerics, false, true))
   end
 end
 
@@ -935,7 +946,7 @@ end
 
 function ls_dbdefaults()
   local db = {}
-  db.channels = BOTCHANNELS
+  db.channels = { HOMECHANNEL }
 
   return db
 end
