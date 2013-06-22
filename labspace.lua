@@ -1253,7 +1253,6 @@ function ls_start_game(channel)
     local infested_player = players[math.random(table.getn(players))]
     ls_set_trait(channel, infested_player, "infested", true)
     ls_notice(infested_player, "You're infested with an \002alien parasite\002.")
-    ls_chanmsg(channel, "It's " .. ls_format_player(channel, infested_player) .. ".")
   end
   
   ls_chanmsg(channel, "Roles have been assigned: " ..
