@@ -650,6 +650,10 @@ function ls_cmd_investigate(numeric, victim)
     end
   end
 
+  if ls_get_role(channel, victimnumeric) ~= "scientist" then
+    ls_notice(victimnumeric, ls_format_player(channel, numeric) .. " investigated you.")
+  end
+  
   if math.random(100) > 85 then
     ls_chanmsg(channel, ls_format_player(channel, numeric) .. "'s fine detective work reveals " .. ls_format_player(channel, victimnumeric) .. "'s role: " .. ls_format_role(ls_get_role(channel, victimnumeric)))
   end
