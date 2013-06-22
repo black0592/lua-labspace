@@ -491,7 +491,7 @@ function ls_cmd_enable(channel, numeric)
     return
   end
 
-  ls_set_enabled(channel, false)
+  ls_set_enabled(channel, true)
   ls_notice(numeric, "Game has been enabled.")
 end
 
