@@ -151,12 +151,8 @@ function handler(target, revent, ...)
     ls_bot = nil
     ls_gamestate = {}
   elseif revent == "irc_onkillreconnect" then
-    local numeric = ...
-
-    if numeric then
-      ls_bot = numeric
-      ls_join_channels()
-    end
+    ls_bot = target
+    ls_join_channels()
   end
 end
 
