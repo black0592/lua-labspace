@@ -461,8 +461,9 @@ function ls_cmd_hl(channel, numeric)
     return
   end
 
-  if string.lower(channel) == "#labspace" then
+  if string.lower(channel) ~= "#labspace" then
     ls_notice(numeric, "Sorry, you can't use this command here.")
+    return
   end
 
   ls_set_lasthl(channel, os.time())
