@@ -1291,7 +1291,6 @@ function ls_start_game(channel)
   local teleporter_owner = teleporter_candidates[math.random(table.getn(teleporter_candidates))]
   ls_set_trait(channel, teleporter_owner, "teleporter", true)
   ls_notice(teleporter_owner, "You've found the \002personal teleporter\002 (50% chance to evade lynching).")
-  ls_chanmsg(channel, ls_format_player(channel, teleporter_owner) .. " has it.")
   
   ls_chanmsg(channel, "Roles have been assigned: " ..
     table.getn(ls_get_players(channel, "scientist")) .. "x " .. ls_format_role("scientist") .. ", " ..
