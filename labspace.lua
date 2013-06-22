@@ -575,7 +575,7 @@ function ls_cmd_kill(numeric, victim)
     ls_remove_player(channel, numeric, true)
     ls_remove_player(channel, victimnumeric, true)
 
-    ls_chanmsg(channel, "An alien bursts out of " .. ls_format_player(channel, victimnumeric) .. "'s chest just as " .. ls_format_player(channel, numeric) .. " was about to murder them, killing them both.")
+    ls_chanmsg(channel, "An alien bursts out of " .. ls_format_player(channel, victimnumeric, true) .. "'s chest just as " .. ls_format_player(channel, numeric, true) .. " was about to murder them, killing them both.")
   else
     ls_devoice_player(channel, victimnumeric)
 
