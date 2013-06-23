@@ -280,7 +280,9 @@ function ls_format_player(channel, numeric, reveal_role, reveal_traits)
     
     if reveal_traits then
       for _, trait in pairs(ls_get_traits(channel, numeric)) do
-        result = result .. ", " .. ls_format_trait(trait)
+        if ls_get_trait(channel, numeric, trait) then
+          result = result .. ", " .. ls_format_trait(trait)
+        end
       end
     end
 
