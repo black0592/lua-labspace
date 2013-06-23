@@ -260,7 +260,7 @@ end
 function ls_format_trait(trait)
   if trait == "teleporter" then
     return "Personal Teleporter"
-  elseif trait == "alien" then
+  elseif trait == "infested" then
     return "Alien Parasite"
   elseif trait == "force" then
     return "Force Field Generator"
@@ -305,7 +305,7 @@ function ls_format_players(channel, numerics, reveal_role, reveal_traits, no_and
      end
    end
 
-   result = result .. ls_format_player(channel, numeric, reveal)
+   result = result .. ls_format_player(channel, numeric, reveal_role, reveal_traits)
    i = i + 1
   end
 
@@ -735,7 +735,7 @@ function ls_cmd_vote(numeric, victim)
     return
   end
 
-  ls_heartbeat(channel, numeric)
+  ls_keepalive(channel, numeric)
   
   ls_set_vote(channel, numeric, victimnumeric)
   ls_notice(numeric, "Done.")
@@ -813,7 +813,7 @@ function ls_cmd_smite(numeric, victim)
     return
   end
 
-  ls_chanmsg(channel, ls_format_player(channel, victimnumeric, true) .. " was struck by lightning.")
+  ls_chanmsg(channel, ls_format_player(channel, victimnumeric, true, true) .. " was struck by lightning.")
   ls_remove_player(channel, victimnumeric, true)
 
   ls_advance_state(channel)
@@ -1254,7 +1254,7 @@ function ls_start_game(channel)
 
     if ls_get_role(channel, numeric) then
       ls_voice_player(channel, numeric)
-      ls_keepalive(channel, numeric)
+      ls_set_seen(channel, numeric, os.time())
     else
       ls_devoice_player(channel, numeric)
     end
@@ -1264,6 +1264,7 @@ function ls_start_game(channel)
 
   for _, player in pairs(players) do
     ls_set_role(channel, player, "lobby")
+    ls_keepalive(channel, player)
   end
 
   local players_count = table.getn(players)
