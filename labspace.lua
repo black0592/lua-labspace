@@ -809,7 +809,16 @@ function ls_cmd_guard(numeric, victim)
         return
       end
       
-      ls_notice(numeric, "You are no longer protecting " .. ls_format_player(channel, player))
+      local previous_Target
+      
+      if player == numeric then
+        previous_target = "yourself"
+      else
+        previous_target = ls_format_player(channel, player)
+      end
+      
+      ls_notice(numeric, "You are no longer protecting " .. previous_target .. ".")
+      ls_notice(player, "You are no longer being protected by a \002force field\002.")
     end
 
     ls_set_guarded(channel, player, (player == victimnumeric))
