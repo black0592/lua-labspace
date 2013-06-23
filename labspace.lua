@@ -761,7 +761,7 @@ end
 
 function ls_cmd_guard(numeric, victim)
   if not victim then
-    ls_notice(numeric, "Syntax: vote <nick>")
+    ls_notice(numeric, "Syntax: guard <nick>")
     return
   end
 
