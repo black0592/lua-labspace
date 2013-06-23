@@ -36,7 +36,10 @@ local KILLMESSAGES = {
   "was vaporized by the scientist's death ray.",
   "slipped into a coma after drinking their poison-laced morning coffee.",
   "was crushed to death by a 5-ton boulder.",
-  "couldn't escape from the scientist's killbot army."
+  "couldn't escape from the scientist's killbot army.",
+  "was torn apart by a group of ferocious labrats.",
+  "was sucked into an artificial black hole.",
+  "took a bath in concentrated sulfuric acid."
 }
 
 local ls_bot
