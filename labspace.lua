@@ -256,22 +256,43 @@ function ls_format_role(role)
   end
 end
 
+-- formats the specified trait identifier for output in a message
+function ls_format_trait(trait)
+  if trait == "teleporter" then
+    return "Personal Teleporter"
+  elseif trait == "alien" then
+    return "Alien Parasite"
+  elseif trait == "force" then
+    return "Force Field Generator"
+  else
+    return "Unknown Trait"
+  end
+end
+
 -- formats the specified player name for output in a message (optionally
--- revealing that player's role in the game)
-function ls_format_player(channel, numeric, reveal)
+-- revealing that player's role and their traits in the game)
+function ls_format_player(channel, numeric, reveal_role, reveal_traits)
   local nick = irc_getnickbynumeric(numeric)
   local result = "\002" .. nick.nick .. "\002"
 
-  if reveal then
-    result = result .. " (" .. ls_format_role(ls_get_role(channel, numeric)) .. ")"
+  if reveal_role then
+    result = result .. " (" .. ls_format_role(ls_get_role(channel, numeric))
+    
+    if reveal_traits then
+      for _, trait in pairs(ls_get_traits(channel, numeric)) do
+        result = result .. ", " .. ls_format_trait(trait)
+      end
+    end
+
+    result = result .. ")"
   end
 
   return result
 end
 
 -- formats a list of player names for output in a message (optionally
--- revealing their roles in the game)
-function ls_format_players(channel, numerics, reveal, no_and)
+-- revealing their roles and traits in the game)
+function ls_format_players(channel, numerics, reveal_role, reveal_traits, no_and)
   local i = 0
   local result = ""
 
@@ -487,13 +508,13 @@ function ls_cmd_hl(channel, numeric)
     end
 
     if table.getn(numerics) > 10 then
-      irc_localchanmsg(ls_hlbot, channel, "HL: " .. ls_format_players(channel, numerics, false, true))
+      irc_localchanmsg(ls_hlbot, channel, "HL: " .. ls_format_players(channel, numerics, false, false, true))
       numerics = {}
     end
   end
 
   if table.getn(numerics) > 0 then
-    irc_localchanmsg(ls_hlbot, "HL: " .. ls_format_players(channel, numerics, false, true))
+    irc_localchanmsg(ls_hlbot, "HL: " .. ls_format_players(channel, numerics, false, false, true))
   end
 end
 
@@ -1121,6 +1142,16 @@ function ls_set_role(channel, numeric, role)
   end
 end
 
+function ls_get_traits(channel, numeric)
+  local traits = {}
+  
+  for trait, _ in pairs(ls_gamestate[channel]["players"][numeric]["traits"]) do
+    table.insert(traits, trait)
+  end
+  
+  return traits
+end
+
 function ls_get_trait(channel, numeric, trait)
   return ls_gamestate[channel]["players"][numeric]["traits"][trait]
 end
@@ -1347,7 +1378,7 @@ function ls_check_alive(channel)
       verb = "seems"
     end
 
-    ls_chanmsg(channel, ls_format_players(channel, dead_players, true) .. " " .. verb .. " to be dead (AFK).")
+    ls_chanmsg(channel, ls_format_players(channel, dead_players, true, true) .. " " .. verb .. " to be dead (AFK).")
 
     for _, player in pairs(dead_players) do
       ls_remove_player(channel, player, true)
@@ -1399,14 +1430,14 @@ function ls_advance_state(channel, delayed)
 
   -- winning condition for scientists
   if table.getn(scientists) >= table.getn(players) - table.getn(scientists) then
-    ls_chanmsg(channel, "There are equal to or more scientists than citizens. Science wins again: " .. ls_format_players(channel, scientists, true))
+    ls_chanmsg(channel, "There are equal to or more scientists than citizens. Science wins again: " .. ls_format_players(channel, scientists, true, true))
     ls_stop_game(channel)
     return
   end
 
   -- winning condition for citizen
   if table.getn(scientists) == 0 then
-    ls_chanmsg(channel, "All scientists have been eliminated. The citizens win this round: " .. ls_format_players(channel, players, true))
+    ls_chanmsg(channel, "All scientists have been eliminated. The citizens win this round: " .. ls_format_players(channel, players, true, true))
     ls_stop_game(channel)
     return
   end
