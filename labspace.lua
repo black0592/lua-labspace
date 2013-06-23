@@ -809,7 +809,7 @@ function ls_cmd_guard(numeric, victim)
         return
       end
       
-      ls_notice(numeric, "You are no longer protecting " .. target)
+      ls_notice(numeric, "You are no longer protecting " .. ls_format_player(channel, player))
     end
 
     ls_set_guarded(channel, player, (player == victimnumeric))
