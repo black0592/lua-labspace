@@ -656,6 +656,11 @@ function ls_cmd_investigate(numeric, victim)
     return
   end
 
+  if not ls_get_active(channel, numeric) then
+    ls_notice(numeric, "Sorry, it's not your turn to choose an investigation target.")
+    return
+  end
+  
   local victimnick = irc_getnickbynick(victim)
 
   if not victimnick then
