@@ -805,7 +805,7 @@ function ls_cmd_guard(numeric, victim)
   for _, player in pairs(ls_get_players(channel)) do
     if ls_get_guarded(channel, player) then
       if player == victimnumeric then
-        ls_notice(numeric, "You are already protecting " .. target)
+        ls_notice(numeric, "You are already protecting " .. target .. ".")
         return
       end
       
@@ -818,7 +818,10 @@ function ls_cmd_guard(numeric, victim)
       end
       
       ls_notice(numeric, "You are no longer protecting " .. previous_target .. ".")
-      ls_notice(player, "You are no longer being protected by a \002force field\002.")
+
+      if numeric ~= player then
+        ls_notice(player, "You are no longer being protected by a \002force field\002.")
+      end
     end
 
     ls_set_guarded(channel, player, (player == victimnumeric))
