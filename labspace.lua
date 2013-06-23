@@ -679,7 +679,7 @@ function ls_cmd_investigate(numeric, victim)
 
   for _, investigator in pairs(investigators) do
     if investigator ~= numeric then
-      ls_notice(investigator, "Another investigator picked a target.")
+      ls_notice(investigator, ls_format_player(channel, numeric) .. " investigated " .. ls_format_player(channel, victimnumeric) .. ". Their role is: " .. ls_format_role(ls_get_role(channel, victimnumeric)))
     end
   end
 
@@ -1300,6 +1300,15 @@ function ls_start_game(channel)
     local investigator_index = math.random(table.getn(players))
     ls_set_role(channel, table.remove(players, investigator_index), "investigator")
     investigators_count = investigators_count + 1
+  end
+
+  -- notify scientists about each other
+  for _, investigator in pairs(ls_get_players(channel, "investigator")) do
+    for _, investigator_notify in pairs(ls_get_players(channel, "investigator")) do
+      if investigator ~= investigator_notify then
+        ls_notice(investigator_notify, ls_format_player(channel, investigator) .. " is also an investigator.")
+      end
+    end
   end
 
   -- rest of the players are citizens
