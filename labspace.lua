@@ -541,8 +541,6 @@ function ls_cmd_kill(numeric, victim)
     return
   end
 
-  ls_keepalive(channel, numeric)
-
   if ls_get_role(channel, numeric) ~= "scientist" then
     ls_notice(numeric, "You need to be a scientist to use this command.")
     return
@@ -632,8 +630,6 @@ function ls_cmd_investigate(numeric, victim)
     return
   end
 
-  ls_keepalive(channel, numeric)
-
   if ls_get_state(channel) ~= "investigate" then
     ls_notice(numeric, "Sorry, you can't use this command right now.")
     return
@@ -699,8 +695,6 @@ function ls_cmd_vote(numeric, victim)
     return
   end
 
-  ls_keepalive(channel, numeric)
-
   local victimnick = irc_getnickbynick(victim)
 
   if not victimnick then
@@ -745,8 +739,6 @@ function ls_cmd_guard(numeric, victim)
     ls_notice(numeric, "Sorry, you need the force field generator to use this command.")
     return
   end
-
-  ls_keepalive(channel, numeric)
 
   local victimnick = irc_getnickbynick(victim)
 
