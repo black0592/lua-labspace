@@ -113,7 +113,7 @@ function gamehandler(target, revent, ...)
       elseif command == "!status" then
         ls_cmd_status(channel, numeric)
       elseif command == "!help" then
-        ls_command_help(channel, numeric)
+        ls_cmd_help(channel, numeric)
       elseif command == "!hl" then
         ls_cmd_hl(channel, numeric)
       elseif command == "!enable" then
