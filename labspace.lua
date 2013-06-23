@@ -481,7 +481,7 @@ end
 
 function ls_cmd_help(channel, numeric)
   ls_notice(numeric, "Read the guide at http://goo.gl/XUyPf")
-  ls_notice(numeric, "If you have further questions, feel free to ask in #labspace")
+  ls_notice(numeric, "If you have further questions, feel free to ask in " .. HOMECHANNEL)
 end
 
 function ls_cmd_hl(channel, numeric)
