@@ -18,6 +18,7 @@
 -- TODO
 -- logging
 -- vote info in !status
+-- canonicalize channel names (or figure out if lua has case-insensitive dicts)
 
 -- Ideas:
 -- scientists vote on kills
@@ -144,6 +145,8 @@ function gamehandler(target, revent, ...)
         ls_cmd_vote(numeric, argument)
       elseif command == "guard" then
         ls_cmd_guard(numeric, argument)
+      elseif command == "stats" then
+        ls_cmd_stats(numeric, argument)
       elseif command == "smite" and onstaff(numeric) then
         ls_cmd_smite(numeric, argument)
       elseif command == "killgame" and onstaff(numeric) then
@@ -178,6 +181,10 @@ function irc_onpart(channel, numeric, message)
   end
 
   if ls_get_role(channel, numeric) then
+    if ls_get_role(channel, numeric) ~= "lobby" then
+      ls_incr_stats_user(numeric, "killed_suicide")
+    end
+
     ls_remove_player(channel, numeric)
     ls_advance_state(channel)
   end
@@ -194,6 +201,10 @@ function irc_onkick(channel, kicked_numeric, kicker_numeric, message)
   end
 
   if ls_get_role(channel, kicked_numeric) then
+    if ls_get_role(channel, numeric) ~= "lobby" then
+      ls_incr_stats_user(numeric, "killed_suicide")
+    end
+
     ls_remove_player(channel, kicked_numeric)
     ls_advance_state(channel)
   end
@@ -203,6 +214,10 @@ irc_onkickall = irc_onkick
 function irc_onquit(numeric)
   for channel, _ in pairs(ls_gamestate) do
     if ls_get_role(channel, numeric) then
+      if ls_get_role(channel, numeric) ~= "lobby" then
+        ls_incr_stats_user(numeric, "killed_suicide")
+      end
+
       ls_remove_player(channel, numeric)
       ls_advance_state(channel)
     end
@@ -324,6 +339,10 @@ function ls_get_state(channel)
   return ls_gamestate[channel]["state"]
 end
 
+function ls_get_startts(channel)
+  return ls_gamestate[channel]["startts"]
+end
+
 -- gets the timeout for the current state
 function ls_get_timeout(channel)
   return ls_gamestate[channel]["timeout"]
@@ -359,6 +378,10 @@ function ls_set_state(channel, state)
 
   ls_set_timeout(channel, -1)
   ls_set_delay(channel, 30)
+end
+
+function ls_set_startts(channel, startts)
+  ls_gamestate[channel]["startts"] = startts
 end
 
 -- sets the game state timeout (in seconds)
@@ -412,6 +435,112 @@ function ls_chan_for_numeric(numeric)
   end
 
   return nil
+end
+
+function ls_get_stats_channel(channel, key)
+  if not ls_db.stats_channel then
+    return 0
+  end
+
+  if not ls_db.stats_channel[channel] then
+    return 0
+  end
+
+  return ls_db.stats_channel[channel][key]
+end
+
+function ls_incr_stats_channel(channel, key, num)
+  if not ls_db.stats_channel then
+    ls_db.stats_channel = {}
+  end
+
+  if not ls_db.stats_channel[channel] then
+    ls_db.stats_channel[channel] = {}
+  end
+
+  local value = ls_db.stats_channel[channel][key]
+
+  if not value then
+    value = 0
+  end
+
+  if num then
+    value = value + num
+  else
+    value = value + 1
+  end
+
+  ls_db.stats_channel[channel][key] = value
+end
+
+function ls_get_stats_user(numeric, key)
+  if not ls_db.stats_user then
+    return 0
+  end
+
+  local nick = irc_getnickbynumeric(numeric)
+  local accountid = nick.accountid
+
+  if not accountid then
+    accountid = -1
+  end
+
+  if not ls_db.stats_user[accountid] then
+    return 0
+  end
+
+  if not ls_db.stats_user[accountid][key] then
+    return 0
+  end
+
+  return ls_db.stats_user[accountid][key]
+end
+
+function ls_get_stats_user_aggregate(key)
+  if not ls_db.stats_user then
+    return 0
+  end
+
+  local value = 0
+
+  for accountid, _ in pairs(ls_db.stats_user) do
+    if ls_db.stats_user[accountid][key] then
+      value = value + ls_db.stats_user[accountid][key]
+    end
+  end
+
+  return value
+end
+
+function ls_incr_stats_user(numeric, key, num)
+  local nick = irc_getnickbynumeric(numeric)
+  local accountid = nick.accountid
+
+  if not accountid then
+    accountid = -1
+  end
+
+  if not ls_db.stats_user then
+    ls_db.stats_user = {}
+  end
+
+  if not ls_db.stats_user[accountid] then
+    ls_db.stats_user[accountid] = {}
+  end
+
+  local value = ls_db.stats_user[accountid][key]
+
+  if not value then
+    value = 0
+  end
+
+  if num then
+    value = value + num
+  else
+    value = value + 1
+  end
+
+  ls_db.stats_user[accountid][key] = value
 end
 
 function ls_cmd_add(channel, numeric)
@@ -604,6 +733,9 @@ function ls_cmd_kill(numeric, victim)
   end
 
   if math.random(100) > 85 then
+    ls_incr_stats_user(numeric, "failed_chance")
+    ls_incr_stats_user(victimnumeric, "survived_chance")
+
     ls_chanmsg(channel, "The scientists' attack was not successful tonight. Nobody died.")
   elseif ls_get_guarded(channel, victimnumeric) then
     for _, player in pairs(ls_get_players(channel)) do
@@ -612,6 +744,9 @@ function ls_cmd_kill(numeric, victim)
     
     ls_set_guarded(channel, victimnumeric, false)
 
+    ls_incr_stats_user(numeric, "failed_guarded")
+    ls_incr_stats_user(victimnumeric, "survived_guarded")
+
     ls_chanmsg(channel, "The attack on " .. ls_format_player(channel, victimnumeric) .. " was deflected by a force field. The force field generator has now run out of power.")
   elseif ls_get_trait(channel, victimnumeric, "infested") then
     ls_devoice_player(channel, numeric)
@@ -619,14 +754,24 @@ function ls_cmd_kill(numeric, victim)
     
     ls_chanmsg(channel, "An alien bursts out of " .. ls_format_player(channel, victimnumeric, true) .. "'s chest just as " .. ls_format_player(channel, numeric, true) .. " was about to murder them, killing them both.")
 
+    ls_incr_stats_user(numeric, "kill_infested")
+    ls_incr_stats_user(numeric, "killed_scientist")
+    ls_incr_stats_user(victimnumeric, "kill_scientist")
+    ls_incr_stats_user(victimnumeric, "killed_infested")
+
     ls_remove_player(channel, numeric, true)
     ls_remove_player(channel, victimnumeric, true)
   else
     ls_devoice_player(channel, victimnumeric)
 
     if numeric == victimnumeric then
+      ls_incr_stats_user(numeric, "killed_suicide")
+
       ls_chanmsg(channel, ls_format_player(channel, victimnumeric, true) .. " committed suicide.")
     else
+      ls_incr_stats_user(numeric, "kill_scientist")
+      ls_incr_stats_user(numeric, "killed_scientist")
+
       if ls_get_role(channel, victimnumeric) == "scientist" then
         ls_chanmsg(channel, ls_format_player(channel, victimnumeric, true) .. " was brutally murdered. Oops.")
       else
@@ -700,8 +845,13 @@ function ls_cmd_investigate(numeric, victim)
   end
   
   if math.random(100) > 85 then
+    ls_incr_stats_user(numeric, "investigate_revealed")
+
     ls_chanmsg(channel, ls_format_player(channel, numeric) .. "'s fine detective work reveals " .. ls_format_player(channel, victimnumeric) .. "'s role: " .. ls_format_role(ls_get_role(channel, victimnumeric)))
   end
+
+  ls_incr_stats_user(numeric, "investigate_" .. ls_get_role(channel, victimnumeric))
+  ls_incr_stats_user(victimnumeric, "investigate_target")
 
   if numeric == victimnumeric then
     ls_notice(numeric, "You're the investigator. Excellent detective work!")
@@ -834,6 +984,139 @@ function ls_cmd_guard(numeric, victim)
   end
 end
 
+function round(num, idp)
+  local mult = 10^(idp or 0)
+  return math.floor(num * mult + 0.5) / mult
+end
+
+function ls_cmd_stats(numeric, victim)
+  local getter
+
+  if victim == "--all" then
+    local channel = ls_chan_for_numeric(numeric)
+
+    if channel and ls_get_role(channel, numeric) ~= "lobby" then
+      ls_notice(numeric, "Sorry, you can't view aggregated statistics while you're playing the game.")
+      return
+    end
+
+    getter = function(key)
+      return ls_get_stats_user_aggregate(key)
+    end
+
+    ls_notice(numeric, "Showing aggregated statistics for all users.")
+  else
+    local victimnumeric
+
+    if victim then
+      local victimnick = irc_getnickbynick(victim)
+
+      if not victimnick then
+        ls_notice(numeric, "Sorry, I don't know who that is. Please specify a valid nick or try --all.")
+        return
+      end
+
+      if not victimnick.accountid then
+        ls_notice(numeric, "Sorry, that user is not authenticated with Q.")
+        return
+      end
+
+      for channel, _ in pairs(ls_gamestate) do
+        local role = ls_get_role(channel, victimnick.numeric)
+
+        if role and role ~= "lobby" then
+          ls_notice(numeric, "Sorry, you can't view statistics for a user who is currently playing a game.")
+          return
+        end
+      end
+
+      victimnumeric = victimnick.numeric
+
+      ls_notice(numeric, "Showing statistics for '" .. victimnick.nick .. "'")
+    else
+      victimnumeric = numeric
+
+      ls_notice(numeric, "Showing statistics for yourself.")
+    end
+
+    getter = function(key)
+      return ls_get_stats_user(victimnumeric, key)
+    end
+  end
+
+  ls_notice(numeric, "Game time: " .. round(getter("game_time") / 60, 2) .. " minutes")
+
+  ls_notice(numeric, "Roles: " ..
+    getter("role_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
+    getter("role_investigator") .. "x " .. ls_format_role("investigator") .. ", " ..
+    getter("role_citizen") .. "x " .. ls_format_role("citizen"))
+
+  ls_notice(numeric, "Traits: " ..
+    getter("trait_teleporter") .. "x " .. ls_format_trait("teleporter") .. ", " ..
+    getter("trait_infested") .. "x " .. ls_format_trait("infested") .. ", " ..
+    getter("trait_force") .. "x " .. ls_format_trait("force"))
+
+  ls_notice(numeric, "Won games as: " ..
+    getter("won_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
+    getter("won_investigator") .. "x " .. ls_format_role("investigator") .. ", " ..
+    getter("won_citizen") .. "x " .. ls_format_role("citizen"))
+
+  ls_notice(numeric, "Survived attacks by: " ..
+    getter("survived_chance") .. "x chance, " ..
+    getter("survived_guarded") .. "x being guarded with a force field")
+
+  ls_notice(numeric, "Active role: " ..
+    getter("active_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
+    getter("active_investigator") .. "x " .. ls_format_role("investigator"))
+
+  ls_notice(numeric, "Inactive role: " ..
+    getter("inactive_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
+    getter("inactive_investigator") .. "x " .. ls_format_role("investigator"))
+
+  ls_notice(numeric, "Kills: " ..
+    getter("kill_scientist") .. "x scientist attack, " ..
+    getter("kill_infested") .. "x infestation attack, " ..
+    getter("kill_tied") .. "x teams tied, " ..
+    getter("kill_smite") .. "x lightning, " ..
+    getter("kill_bomb") .. "x bomb")
+
+  ls_notice(numeric, "Failed kills: " ..
+    getter("failed_chance") .. "x by chance, " ..
+    getter("failed_guarded") .. "x because target was guarded by a force field")
+
+  ls_notice(numeric, "Deaths: " ..
+    getter("killed_scientist") .. "x scientist attack, " ..
+    getter("killed_infested") .. "x infestation attack, " ..
+    getter("killed_lynch") .. "x lynched, " ..
+    getter("killed_suicide") .. "x suicide, " ..
+    getter("killed_tied") .. "x teams tied, " ..
+    getter("killed_afk") .. "x AFK, " ..
+    getter("killed_smite") .. "x lightning, " ..
+    getter("killed_bomb") .. "x bomb")
+
+  ls_notice(numeric, "Revealed investigations: " .. getter("investigation_revealed"))
+
+  ls_notice(numeric, "Investigated: " ..
+    getter("investigate_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
+    getter("investigate_investigator") .. "x " .. ls_format_role("investigator") .. ", " ..
+    getter("investigate_citizen") .. "x " .. ls_format_role("citizen"))
+
+  ls_notice(numeric, "Was investigated: " .. getter("investigate_target"))
+
+  ls_notice(numeric, "Votes by target team: " ..
+    getter("vote_team") .. "x own team, " ..
+    getter("vote_enemy") .. "x enemy team")
+
+  ls_notice(numeric, "Votes by target role: " ..
+    getter("vote_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
+    getter("vote_investigator") .. "x " .. ls_format_role("investigator") .. ", " ..
+    getter("vote_citizen") .. "x " .. ls_format_role("citizen"))
+
+  ls_notice(numeric, "Teleporter usage: " ..
+    getter("teleporter_activated") .. "x success (" .. getter("teleporter_intact") .. "x retained, " .. getter("teleporter_destroyed") .. "x destroyed), " ..
+    getter("teleporter_failed") .. "x failed")
+end
+
 function ls_cmd_smite(numeric, victim)
   if not victim then
     ls_notice(numeric, "Syntax: smite <nick>")
@@ -854,6 +1137,9 @@ function ls_cmd_smite(numeric, victim)
     ls_notice(numeric, "Sorry, " .. victimnick.nick .. " isn't playing the game.")
     return
   end
+
+  ls_incr_stats_user(numeric, "kill_smite")
+  ls_incr_stats_user(victimnumeric, "killed_smite")
 
   ls_chanmsg(channel, ls_format_player(channel, victimnumeric, true, true) .. " was struck by lightning.")
   ls_remove_player(channel, victimnumeric, true)
@@ -877,6 +1163,12 @@ function ls_cmd_killgame(numeric, channel)
   if table.getn(ls_get_players(channel)) == 0 then
     ls_notice(numeric, "There's nobody playing the game.")
     return
+  end
+
+  ls_incr_stats_user(numeric, "kill_bomb", table.getn(ls_get_players(channel)))
+
+  for _, player in pairs(ls_get_players(channel)) do
+    ls_incr_stats_user(player, "killed_bomb")
   end
 
   ls_chanmsg(channel, ls_format_player(channel, numeric) .. " set us up the bomb. Game over.")
@@ -1105,6 +1397,10 @@ function ls_remove_player(channel, numeric, forced)
     return
   end
 
+  if role ~= "lobby" then
+    ls_incr_stats_user(numeric, "game_time", os.time() - ls_get_startts(channel))
+  end
+
   local announced = ls_get_announced(channel, numeric)
 
   local force_field = ls_get_trait(channel, numeric, "force")
@@ -1242,14 +1538,22 @@ function ls_set_vote(channel, numeric, votenumeric)
     -- increase count for this new vote
     count = count + 1
 
+    local plural_s
+
+    if count ~= 1 then
+      plural_s = "s"
+    else
+      plural_s = ""
+    end
+
     if numeric ~= votenumeric then
       if ls_get_vote(channel, numeric) then
-        ls_chanmsg(channel, ls_format_player(channel, numeric) .. " changed their vote to " .. ls_format_player(channel, votenumeric) .. " (" .. count .. " votes).")
+        ls_chanmsg(channel, ls_format_player(channel, numeric) .. " changed their vote to " .. ls_format_player(channel, votenumeric) .. " (" .. count .. " vote" .. plural_s .. ").")
       else
-        ls_chanmsg(channel, ls_format_player(channel, numeric) .. " voted for " .. ls_format_player(channel, votenumeric) .. " (" .. count .. " votes).")
+        ls_chanmsg(channel, ls_format_player(channel, numeric) .. " voted for " .. ls_format_player(channel, votenumeric) .. " (" .. count .. " vote" .. plural_s .. ").")
       end
     else
-      ls_chanmsg(channel, ls_format_player(channel, numeric) .. " voted for himself. Oops! (" .. count .. " votes)")
+      ls_chanmsg(channel, ls_format_player(channel, numeric) .. " voted for himself. Oops! (" .. count .. " vote" .. plural_s .. ")")
     end
   end
 
@@ -1304,6 +1608,9 @@ function ls_start_game(channel)
 
   ls_chanmsg(channel, "Starting the game...")
 
+  ls_incr_stats_channel(channel, "game_count")
+  ls_set_startts(channel, os.time())
+
   for _, player in pairs(players) do
     ls_set_role(channel, player, "lobby")
     ls_keepalive(channel, player)
@@ -1352,10 +1659,15 @@ function ls_start_game(channel)
   for _, player in pairs(players) do
     ls_set_role(channel, player, "citizen")
   end
-  
+
+  for _, player in pairs(ls_get_players(channel)) do
+    ls_incr_stats_user(player, "role_" .. ls_get_role(channel, player))
+  end  
+
   -- give someone the force field generator
   local force_owner = players[math.random(table.getn(players))]
   ls_set_trait(channel, force_owner, "force", true)
+  ls_incr_stats_user(force_owner, "trait_force")
   ls_set_guarded(channel, force_owner, true)
   ls_notice(force_owner, "You've found the \002force field generator\002. Use /notice " .. BOTNICK .. " guard <nick> to protect someone.")
   ls_notice(force_owner, "You are currently protecting yourself.")
@@ -1364,6 +1676,7 @@ function ls_start_game(channel)
   if table.getn(players) > 6 then
     local infested_player = players[math.random(table.getn(players))]
     ls_set_trait(channel, infested_player, "infested", true)
+    ls_incr_stats_user(infested_player, "trait_infested")
     ls_notice(infested_player, "You're infested with an \002alien parasite\002.")
   end
   
@@ -1378,6 +1691,7 @@ function ls_start_game(channel)
 
   local teleporter_owner = teleporter_candidates[math.random(table.getn(teleporter_candidates))]
   ls_set_trait(channel, teleporter_owner, "teleporter", true)
+  ls_incr_stats_user(teleporter_owner, "trait_teleporter")
   ls_notice(teleporter_owner, "You've found the \002personal teleporter\002 (50% chance to evade lynching).")
   
   ls_chanmsg(channel, "Roles have been assigned: " ..
@@ -1390,6 +1704,10 @@ function ls_start_game(channel)
 end
 
 function ls_stop_game(channel)
+  if ls_get_state(channel) ~= "lobby" then
+    ls_incr_stats_channel(channel, "game_time", os.time() - ls_get_startts(channel))
+  end
+
   ls_set_state(channel, "lobby")
   ls_set_waitcount(channel, 0)
 
@@ -1433,6 +1751,7 @@ function ls_check_alive(channel)
     ls_chanmsg(channel, ls_format_players(channel, dead_players, true, true) .. " " .. verb .. " to be dead (AFK).")
 
     for _, player in pairs(dead_players) do
+      ls_incr_stats_user(player, "killed_afk")
       ls_remove_player(channel, player, true)
     end
   end
@@ -1482,6 +1801,15 @@ function ls_advance_state(channel, delayed)
 
   -- winning condition for scientists
   if table.getn(scientists) >= table.getn(players) - table.getn(scientists) then
+    for _, player in pairs(players) do
+      if ls_get_role(channel, player) == "scientist" then
+        ls_incr_stats_user(player, "kill_tied")
+        ls_incr_stats_user(player, "won_scientist")
+      else
+        ls_incr_stats_user(player, "killed_tied")
+      end
+    end
+
     ls_chanmsg(channel, "There are equal to or more scientists than citizens. Science wins again: " .. ls_format_players(channel, scientists, true, true))
     ls_stop_game(channel)
     return
@@ -1489,6 +1817,10 @@ function ls_advance_state(channel, delayed)
 
   -- winning condition for citizen
   if table.getn(scientists) == 0 then
+    for _, player in pairs(players) do
+      ls_incr_stats_user(player, "won_" .. ls_get_role(channel, player))
+    end
+
     ls_chanmsg(channel, "All scientists have been eliminated. The citizens win this round: " .. ls_format_players(channel, players, true, true))
     ls_stop_game(channel)
     return
@@ -1505,9 +1837,11 @@ function ls_advance_state(channel, delayed)
       for _, scientist in pairs(scientists) do
         if scientist == active_scientist then
           ls_set_active(channel, scientist, true)
+          ls_incr_stats_user(scientist, "active_scientist")
           ls_notice(scientist, "It's your turn to select a citizen to kill. Use /notice " .. BOTNICK .. " kill <nick> to kill someone.")
         else
           ls_set_active(channel, scientist, false)
+          ls_incr_stats_user(scientist, "inactive_scientist")
           ls_notice(scientist, ls_format_player(channel, active_scientist) .. " is choosing a victim.")
         end
       end
@@ -1542,9 +1876,11 @@ function ls_advance_state(channel, delayed)
       for _, investigator in pairs(investigators) do
         if investigator == active_investigator then
           ls_set_active(channel, investigator, true)
+          ls_incr_stats_user(investigator, "active_investigator")
           ls_notice(investigator, "You need to choose someone to investigate: /notice " .. BOTNICK .. " investigate <nick>")
         else
           ls_set_active(channel, investigator, false)
+          ls_incr_stats_user(investigator, "inactive_investigator")
           ls_notice(investigator, "Another investigator is choosing a target.")
         end
       end
@@ -1587,6 +1923,14 @@ function ls_advance_state(channel, delayed)
 
       for _, player in pairs(players) do
         local vote = ls_get_vote(channel, player)
+
+        if (ls_get_role(channel, player) == "scientist" and ls_get_role(channel, vote) == "scientist") or (ls_get_role(channel, player) ~= "scientist" and ls_get_role(channel, vote) ~= "scientist") then
+          ls_incr_stats_user(player, "vote_team")
+        else
+          ls_incr_stats_user(player, "vote_enemy")
+        end
+
+        ls_incr_stats_user(player, "vote_" .. ls_get_role(channel, vote))
 
         if vote then
           if not votes[vote] then
@@ -1642,17 +1986,24 @@ function ls_advance_state(channel, delayed)
 
       if teleporter and math.random(100) > 50 then
         ls_notice(victim, "You press the button to activate the \002personal teleporter\002... and you safely escape!")
+        ls_incr_stats_user(victim, "teleporter_activated")
         ls_chanmsg(channel, ls_format_player(channel, victim) .. " used his personal teleporter to escape the angry mob.")
         
         if math.random(100) > 50 then
           ls_set_trait(channel, victim, "teleporter", false)
+          ls_incr_stats_user(victim, "teleporter_destroyed")
           ls_notice(victim, "Your \002personal teleporter\002 was destroyed.")
+        else
+          ls_incr_stats_user(victim, "teleporter_intact")
+          ls_notice(channel, victim, "You check your \002personal teleporter\002 after the escape and it is still intact.")
         end
       else
         if teleporter then
+          ls_incr_stats_user(victim, "teleporter_failed")
           ls_notice(victim, "You press the button to activate the \002personal teleporter\002... but nothing happens!")
         end
         
+        ls_incr_stats_user(victim, "killed_lynch")
         ls_devoice_player(channel, victim)
 
         ls_chanmsg(channel, ls_format_player(channel, victim, true) .. " " .. message_suffix)
