@@ -800,10 +800,23 @@ function ls_cmd_guard(numeric, victim)
   end
   
   for _, player in pairs(ls_get_players(channel)) do
+    if ls_get_guarded(channel, player) then
+      if player == victimnumeric then
+        ls_notice(numeric, "You are already protecting " .. target)
+        return
+      end
+      
+      ls_notice(numeric, "You are no longer protecting " .. target)
+    end
+
     ls_set_guarded(channel, player, (player == victimnumeric))
   end
   
-  ls_notice(numeric, "You are now protecting " .. target .. ".")
+  ls_notice(victimnumeric, "A field of energy envelopes you. You are now protected by a \002force field\002.")
+  
+  if numeric ~= victimnumeric then
+    ls_notice(numeric, "You are now protecting " .. target .. ".")
+  end
 end
 
 function ls_cmd_smite(numeric, victim)
