@@ -714,6 +714,8 @@ function ls_cmd_vote(numeric, victim)
     return
   end
 
+  ls_heartbeat(channel, numeric)
+  
   ls_set_vote(channel, numeric, victimnumeric)
   ls_notice(numeric, "Done.")
 
