@@ -1553,8 +1553,10 @@ function ls_advance_state(channel, delayed)
 
       local victim_index = math.random(table.getn(candidates))
       local victim = candidates[victim_index]
+      local teleporter = ls_get_trait(channel, victim, "teleporter")
 
-      if ls_get_trait(channel, victim, "teleporter") and math.random(100) > 50 then
+      if teleporter and math.random(100) > 50 then
+        ls_notice(victim, "You press the button to activate the \002personal teleporter\002... and you safely escape!")
         ls_chanmsg(channel, ls_format_player(channel, victim) .. " used his personal teleporter to escape the angry mob.")
         
         if math.random(100) > 50 then
@@ -1562,6 +1564,10 @@ function ls_advance_state(channel, delayed)
           ls_notice(victim, "Your \002personal teleporter\002 was destroyed.")
         end
       else
+        if teleporter then
+          ls_notice(victim, "You press the button to activate the \002personal teleporter\002... but nothing happens!")
+        end
+        
         ls_devoice_player(channel, victim)
 
         ls_chanmsg(channel, ls_format_player(channel, victim, true) .. " " .. message_suffix)
