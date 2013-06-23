@@ -533,8 +533,8 @@ end
 function ls_cmd_enable(channel, numeric)
   local chanuser = irc_getuserchanmodes(numeric, channel)
 
-  if not chanuser or not chanuser.opped then
-    ls_notice(channel, "You need to be opped to use this command.")
+  if (not chanuser or not chanuser.opped) and not onstaff(numeric) then
+    ls_notice(numeric, "You need to be opped to use this command.")
     return
   end
 
@@ -545,8 +545,8 @@ end
 function ls_cmd_disable(channel, numeric)
   local chanuser = irc_getuserchanmodes(numeric, channel)
 
-  if not chanuser or not chanuser.opped then
-    ls_notice(channel, "You need to be opped to use this command.")
+  if (not chanuser or not chanuser.opped) and not onstaff(numeric) then
+    ls_notice(numeric, "You need to be opped to use this command.")
     return
   end
 
