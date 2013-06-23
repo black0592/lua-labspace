@@ -112,6 +112,8 @@ function gamehandler(target, revent, ...)
         ls_cmd_start(channel, numeric)
       elseif command == "!status" then
         ls_cmd_status(channel, numeric)
+      elseif command == "!help" then
+        ls_command_help(channel, numeric)
       elseif command == "!hl" then
         ls_cmd_hl(channel, numeric)
       elseif command == "!enable" then
@@ -475,6 +477,11 @@ function ls_cmd_status(channel, numeric)
       table.getn(ls_get_players(channel, "investigator")) .. "x " .. ls_format_role("investigator") .. ", " ..
       table.getn(ls_get_players(channel, "citizen")) .. "x " .. ls_format_role("citizen"))
   end
+end
+
+function ls_cmd_help(channel, numeric)
+  ls_notice(numeric, "Read the guide at http://goo.gl/XUyPf")
+  ls_notice(numeric, "If you have further questions, feel free to ask in #labspace")
 end
 
 function ls_cmd_hl(channel, numeric)
