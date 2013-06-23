@@ -60,7 +60,7 @@ function onconnect()
   ls_bot = irc_localregisteruserid(BOTNICK, "labspace", "brought.to.you.by.science", "For science!", BOTACCOUNT, BOTACCOUNTID, "+iXr", gamehandler)
   ls_join_channels()
   
-  ls_hlbot = irc_localregisteruser(BOTNICK .. "-hl", "will.spam", "for.food", "Got some change?", "labspace-hl", "+iX", highlighthandler)
+  ls_hlbot = irc_localregisteruser("hl-" .. BOTNICK, "will.spam", "for.food", "Got some change?", "labspace-hl", "+iX", highlighthandler)
   irc_localjoin(ls_hlbot, HOMECHANNEL)
 end
 
