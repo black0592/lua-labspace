@@ -40,7 +40,9 @@ local KILLMESSAGES = {
   "couldn't escape from the scientist's killbot army.",
   "was torn apart by a group of ferocious labrats.",
   "was sucked into an artificial black hole.",
-  "took a bath in concentrated sulfuric acid."
+  "took a bath in concentrated sulfuric acid.",
+  "'s house was levelled by an orbital ion cannon.",
+  "got baked and there was no cake."
 }
 
 local ls_bot
