@@ -150,6 +150,10 @@ function gamehandler(target, revent, ...)
         ls_cmd_guard(numeric, argument)
       elseif command == "stats" then
         ls_cmd_stats(numeric, argument)
+      elseif command == "help" then
+        ls_cmd_msghelp(numeric, argument)
+      elseif command == "showcommands" then
+        ls_cmd_msgshowcommands(numeric, argument)
       elseif command == "smite" and onstaff(numeric) then
         ls_cmd_smite(numeric, argument)
       elseif command == "killgame" and onstaff(numeric) then
@@ -158,6 +162,8 @@ function gamehandler(target, revent, ...)
         ls_cmd_addchan(numeric, argument)
       elseif command == "delchan" and ontlz(numeric) then
         ls_cmd_delchan(numeric, argument)
+      else
+        ls_notice(numeric, "Not sure which command you're looking for, try /msg " .. BOTNICK .. " showcommands.")
       end
     end
   elseif revent == "irc_onkilled" then
@@ -1118,6 +1124,31 @@ function ls_cmd_stats(numeric, victim)
   ls_notice(numeric, "Teleporter usage: " ..
     getter("teleporter_activated") .. "x success (" .. getter("teleporter_intact") .. "x retained, " .. getter("teleporter_destroyed") .. "x destroyed), " ..
     getter("teleporter_failed") .. "x failed")
+end
+
+function ls_cmd_msghelp(numeric, victim)
+  ls_cmd_showcommands(numeric, victim)
+end
+
+function ls_cmd_msgshowcommands(numeric, victim)
+  ls_notice(numeric, "Commands available to you:")
+  ls_notice(numeric, "guard         - Guards somebody.")
+  ls_notice(numeric, "help          - Get help.")
+  ls_notice(numeric, "investigate   - Investigate somebody.")
+  ls_notice(numeric, "kill          - Kill somebody.")
+  ls_notice(numeric, "showcommands  - Show this list.")
+  ls_notice(numeric, "stats         - View stats about the game.")
+  ls_notice(numeric, "vote          - Vote for somebody.")
+  
+  if onstaff(numeric) or ontlz(numeric) then
+    ls_notice(numeric, "smite         - Remove someone from a game.")
+    ls_notice(numeric, "killgame      - Cancel a game.")
+  end
+
+  if ontlz(numeric) then
+    ls_notice(numeric, "addchan       - Adds me to a channel.")
+    ls_notice(numeric, "delchan       - Removes me from a channel.")
+  end
 end
 
 function ls_cmd_smite(numeric, victim)
