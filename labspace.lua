@@ -1185,7 +1185,7 @@ end
 
 function ls_cmd_killgame(numeric, channel)
   if not channel then
-    ls_notice(numeric, "Syntax: smite <channel>")
+    ls_notice(numeric, "Syntax: killgame <channel>")
     return
   end
 
