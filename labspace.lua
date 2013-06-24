@@ -1127,7 +1127,7 @@ function ls_cmd_stats(numeric, victim)
 end
 
 function ls_cmd_msghelp(numeric, victim)
-  ls_cmd_showcommands(numeric, victim)
+  ls_cmd_msgshowcommands(numeric, victim)
 end
 
 function ls_cmd_msgshowcommands(numeric, victim)
