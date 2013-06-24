@@ -1193,6 +1193,7 @@ function ls_cmd_msgshowcommands(numeric, victim)
   if onstaff(numeric) or ontlz(numeric) then
     ls_notice(numeric, "smite         - Remove someone from a game.")
     ls_notice(numeric, "killgame      - Cancel a game.")
+    ls_notice(numeric, "killmessage   - View or set someone's custom kill message.")
   end
 
   if ontlz(numeric) then
