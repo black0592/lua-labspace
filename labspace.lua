@@ -158,6 +158,14 @@ function gamehandler(target, revent, ...)
         ls_cmd_smite(numeric, argument)
       elseif command == "killgame" and onstaff(numeric) then
         ls_cmd_killgame(numeric, argument)
+      elseif command == "killmessage" and onstaff(numeric) then
+        local message
+        
+        if table.getn(tokens) > 2 then
+          message = table.concat(tokens, " ", 3)
+        end
+        
+        ls_cmd_killmessage(numeric, argument, message)
       elseif command == "addchan" and ontlz(numeric) then
         ls_cmd_addchan(numeric, argument)
       elseif command == "delchan" and ontlz(numeric) then
@@ -552,6 +560,36 @@ function ls_incr_stats_user(numeric, key, num)
   ls_db.stats_user[accountid][key] = value
 end
 
+function ls_get_killmessage(numeric)
+  if not ls_db.killmessages then
+    return nil
+  end
+
+  local nick = irc_getnickbynumeric(numeric)
+  local accountid = nick.accountid
+
+  if not accountid then
+    return nil
+  end
+
+  return ls_db.killmessages[accountid]
+end
+
+function ls_set_killmessage(numeric, message)
+  local nick = irc_getnickbynumeric(numeric)
+  local accountid = nick.accountid
+
+  if not accountid then
+    return
+  end
+
+  if not ls_db.killmessages then
+    ls_db.killmessages = {}
+  end
+
+  ls_db.killmessages[accountid] = message
+end
+
 function ls_cmd_add(channel, numeric)
   ls_add_player(channel, numeric)
 end
@@ -786,6 +824,12 @@ function ls_cmd_kill(numeric, victim)
       else
         local killmessage = KILLMESSAGES[math.random(table.getn(KILLMESSAGES))]
 
+        local custom_killmessage = ls_get_killmessage(victimnumeric)
+        
+        if custom_killmessage and math.random(100) > 66 then
+          killmessage = custom_killmessage
+        end
+        
         local space = " "
 
         if string.sub(killmessage, 1, 1) == "'" then
@@ -1252,6 +1296,45 @@ function ls_cmd_delchan(numeric, channel)
   ls_remove_channel(channel, true)
 
   ls_notice(numeric, "Done.")
+end
+
+function ls_cmd_killmessage(numeric, victim, message)
+  if not victim then
+    ls_notice(numeric, "Syntax: killmessage <nick> ?message?")
+    return
+  end
+
+  local victimnick = irc_getnickbynick(victim)
+
+  if not victimnick then
+    ls_notice(numeric, "Sorry, I don't know who that is.")
+    return
+  end
+
+  if not victimnick.accountid then
+    ls_notice(numeric, "Sorry, that user is not authenticated with Q.")
+    return
+  end
+  
+  local victimnumeric = victimnick.numeric
+  
+  if not message then
+    local current_message = ls_get_killmessage(victimnumeric)
+    
+    if not current_message then
+      ls_notice(numeric, victimnick.nick .. " does not have a custom kill message.")
+    else
+      ls_notice(numeric, "Current custom kill message for " .. victimnick.nick .. ": " .. current_message)
+    end
+  else
+    if message == "REMOVE" then
+      ls_set_killmessage(victimnumeric, nil)
+      ls_notice(numeric, "Custom kill message for " .. victimnick.nick .. " was removed.")
+    else
+      ls_set_killmessage(victimnumeric, message)
+      ls_notice(numeric, "Custom kill message for " .. victimnick.nick .. " was set to: " .. message)
+    end
+  end
 end
 
 function ls_keepalive(channel, numeric)
