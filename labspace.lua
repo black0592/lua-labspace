@@ -1926,15 +1926,15 @@ function ls_advance_state(channel, delayed)
       for _, player in pairs(players) do
         local vote = ls_get_vote(channel, player)
 
-        if (ls_get_role(channel, player) == "scientist" and ls_get_role(channel, vote) == "scientist") or (ls_get_role(channel, player) ~= "scientist" and ls_get_role(channel, vote) ~= "scientist") then
-          ls_incr_stats_user(player, "vote_team")
-        else
-          ls_incr_stats_user(player, "vote_enemy")
-        end
-
-        ls_incr_stats_user(player, "vote_" .. ls_get_role(channel, vote))
-
         if vote then
+          if (ls_get_role(channel, player) == "scientist" and ls_get_role(channel, vote) == "scientist") or (ls_get_role(channel, player) ~= "scientist" and ls_get_role(channel, vote) ~= "scientist") then
+            ls_incr_stats_user(player, "vote_team")
+          else
+            ls_incr_stats_user(player, "vote_enemy")
+          end
+
+          ls_incr_stats_user(player, "vote_" .. ls_get_role(channel, vote))
+
           if not votes[vote] then
             votes[vote] = 0
             table.insert(votees, vote)
