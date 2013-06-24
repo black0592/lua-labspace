@@ -41,8 +41,9 @@ local KILLMESSAGES = {
   "was torn apart by a group of ferocious labrats.",
   "was sucked into an artificial black hole.",
   "took a bath in concentrated sulfuric acid.",
-  "'s house was levelled by an orbital ion cannon.",
-  "got baked and there was no cake."
+  "'s house was leveled by an orbital ion cannon.",
+  "got baked and there was no cake.",
+  "was pushed into a portal leading to the sun."
 }
 
 local ls_bot
