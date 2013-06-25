@@ -2122,7 +2122,7 @@ function ls_advance_state(channel, delayed)
       if teleporter and math.random(100) > 50 then
         ls_notice(victim, "You press the button to activate the \002personal teleporter\002... and you safely escape!")
         ls_incr_stats_user(victim, "teleporter_activated")
-        ls_chanmsg(channel, ls_format_player(channel, victim) .. " used his personal teleporter to escape the angry mob.")
+        ls_chanmsg(channel, ls_format_player(channel, victim) .. " used their personal teleporter to escape the angry mob.")
         
         if math.random(100) > 50 then
           ls_set_trait(channel, victim, "teleporter", false)
