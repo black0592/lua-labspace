@@ -794,6 +794,7 @@ function ls_cmd_kill(numeric, victim)
       ls_set_trait(channel, player, "force", false)
     end
     
+    ls_notice(victimnumeric, "You are no longer being protected by a \002force field\002.")
     ls_set_guarded(channel, victimnumeric, false)
 
     ls_incr_stats_user(numeric, "failed_guarded")
@@ -1550,7 +1551,8 @@ function ls_remove_player(channel, numeric, forced)
       ls_set_vote(channel, player, nil)
     end
     
-    if force_field then
+    if force_field and ls_get_guarded(channel, player) then
+      ls_notice(player, "You are no longer being protected by a \002force field\002.")
       ls_set_guarded(channel, player, false)
     end
   end
