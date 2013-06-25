@@ -1093,6 +1093,13 @@ function ls_cmd_stats(numeric, victim)
 
       ls_notice(numeric, "Showing statistics for '" .. victimnick.nick .. "'")
     else
+      local victimnick = irc_getnickbynumeric(numeric)
+
+      if not victimnick.accountid then
+        ls_notice(numeric, "Sorry, you are not authenticated with Q.")
+        return
+      end
+
       victimnumeric = numeric
 
       ls_notice(numeric, "Showing statistics for yourself.")
