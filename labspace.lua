@@ -648,6 +648,11 @@ function ls_cmd_status(channel, numeric)
     return
   end
 
+  ls_show_players(channel)
+end
+
+
+function ls_show_status(channel)
   ls_chanmsg(channel, "Players: " .. ls_format_players(channel, ls_get_players(channel)))
 
   if ls_game_in_progress(channel) then
@@ -1824,13 +1829,10 @@ function ls_start_game(channel)
   ls_set_trait(channel, teleporter_owner, "teleporter", true)
   ls_incr_stats_user(teleporter_owner, "trait_teleporter")
   ls_notice(teleporter_owner, "You've found the \002personal teleporter\002 (50% chance to evade lynching).")
-  
-  ls_chanmsg(channel, "Roles have been assigned: " ..
-    table.getn(ls_get_players(channel, "scientist")) .. "x " .. ls_format_role("scientist") .. ", " ..
-    table.getn(ls_get_players(channel, "investigator")) .. "x " .. ls_format_role("investigator") .. ", " ..
-    table.getn(ls_get_players(channel, "citizen")) .. "x " .. ls_format_role("citizen") .. " - Good luck!")
 
   ls_set_state(channel, "kill")
+  ls_show_status(channel)
+
   ls_advance_state(channel)
 end
 
