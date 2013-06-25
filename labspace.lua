@@ -648,7 +648,7 @@ function ls_cmd_status(channel, numeric)
     return
   end
 
-  ls_show_players(channel)
+  ls_show_status(channel)
 end
 
 
