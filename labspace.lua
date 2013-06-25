@@ -1036,7 +1036,7 @@ function ls_cmd_guard(numeric, victim)
     ls_set_guarded(channel, player, (player == victimnumeric))
   end
   
-  ls_notice(victimnumeric, "A field of energy envelopes you. You are now protected by a \002force field\002.")
+  ls_notice(victimnumeric, "A field of energy envelops you. You are now protected by a \002force field\002.")
   
   if numeric ~= victimnumeric then
     ls_notice(numeric, "You are now protecting " .. target .. ".")
