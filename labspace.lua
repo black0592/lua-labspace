@@ -707,7 +707,7 @@ function ls_cmd_hl(channel, numeric)
   end
 
   if table.getn(numerics) > 0 then
-    irc_localchanmsg(ls_hlbot, "HL: " .. ls_format_players(channel, numerics, false, false, true))
+    irc_localchanmsg(ls_hlbot, channel, "HL: " .. ls_format_players(channel, numerics, false, false, true))
   end
 end
 
