@@ -106,7 +106,7 @@ function gamehandler(target, revent, ...)
     ls_keepalive(channel, numeric)
 
     local tokens = ls_split_message(message)
-    local command = tokens[1]
+    local command = tokens[1]:lower()
 
     if command then
       if command == "!add" then
@@ -136,7 +136,7 @@ function gamehandler(target, revent, ...)
 
     local tokens = ls_split_message(message)
 
-    local command = tokens[1]
+    local command = tokens[1]:lower()
     local argument = tokens[2]
 
     if command then
