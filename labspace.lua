@@ -64,7 +64,8 @@ function onconnect()
 end
 
 function ls_join_channels()
-  ls_add_channel(HOMECHANNEL)
+  local channel = irctolower(HOMECHANNEL)
+  ls_add_channel(channel)
 
   for _, channel in pairs(ls_db.channels) do
     if not ls_is_game_channel(channel) then
@@ -90,6 +91,8 @@ end
 function gamehandler(target, revent, ...)
   if revent == "irc_onchanmsg" then
     local numeric, channel, message = ...
+
+    channel = irctolower(channel)
 
     if not ls_is_game_channel(channel) then
       return
@@ -185,6 +188,8 @@ function highlighthandler(target, revent, ...)
 end
 
 function irc_onpart(channel, numeric, message)
+  channel = irctolower(channel)
+
   if not ls_is_game_channel(channel) then
     return
   end
@@ -200,6 +205,8 @@ function irc_onpart(channel, numeric, message)
 end
 
 function irc_onkick(channel, kicked_numeric, kicker_numeric, message)
+  channel = irctolower(channel)
+
   if not ls_is_game_channel(channel) then
     return
   end
@@ -1269,6 +1276,8 @@ function ls_cmd_killgame(numeric, channel)
     return
   end
 
+  channel = irctolower(channel)
+
   if not ls_is_game_channel(channel) then
     ls_notice(numeric, "I'm not on that channel.")
     return
@@ -1297,6 +1306,8 @@ function ls_cmd_addchan(numeric, channel)
     return
   end
 
+  channel = irctolower(channel)
+
   if not irc_getchaninfo(channel) then
     ls_notice(numeric, "The specified channel does not exist.")
     return
@@ -1317,6 +1328,8 @@ function ls_cmd_delchan(numeric, channel)
     ls_notice(numeric, "Syntax: delchan <#channel>")
     return
   end
+
+  channel = irctolower(channel)
 
   if not ls_is_game_channel(channel) then
     ls_notice(numeric, "The bot is not on that channel.")
