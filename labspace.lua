@@ -660,7 +660,31 @@ function ls_show_status(channel)
       table.getn(ls_get_players(channel, "scientist")) .. "x " .. ls_format_role("scientist") .. ", " ..
       table.getn(ls_get_players(channel, "investigator")) .. "x " .. ls_format_role("investigator") .. ", " ..
       table.getn(ls_get_players(channel, "citizen")) .. "x " .. ls_format_role("citizen"))
+
+    if ls_get_state(channel) == "vote" then
+      local voteresult = ls_get_vote_result(channel, false)
+      if table.getn(voteresult.votees) > 0 then
+        ls_show_votes(channel, voteresult, false)
+      end
+    end
   end
+end
+
+function ls_show_votes(channel, voteresult, final)
+   local prefix = ""
+
+   if final then
+     prefix = "Final"
+   else
+     prefix = "Current"
+   end
+
+   if table.getn(voteresult.votees) > 0 then
+     ls_chanmsg(channel, prefix .. " votes: " .. ls_format_votes(voteresult.votes, voteresult.votees))
+     if not final and table.getn(voteresult.missing_votes) > 0 then
+       ls_chanmsg(channel, "Participants that still need to vote: " .. ls_format_players(channel, voteresult.missing_votes))
+     end
+   end
 end
 
 function ls_cmd_help(channel, numeric)
@@ -1700,6 +1724,61 @@ function ls_set_vote(channel, numeric, votenumeric)
   end
 end
 
+function ls_format_votes(votes, votees)
+  local message = ""
+
+  for _, votee in pairs(votees) do
+    if message ~= "" then
+      message = message .. ", "
+    end
+
+    message = message .. votes[votee] .. "x " .. ls_format_player(channel, votee)
+  end
+
+  return message
+end
+
+-- Returns (.votes, .votees, .missing_votes) as the current vote results
+function ls_get_vote_result(channel, countscore)
+  local result = { votes = {}, votees = {}, missing_votes = {} }
+  
+  for _, player in pairs(ls_get_players(channel)) do
+    local vote = ls_get_vote(channel, player)
+
+    if vote then
+      if countscore then
+        if (ls_get_role(channel, player) == "scientist" and ls_get_role(channel, vote) == "scientist") or (ls_get_role(channel, player) ~= "scientist" and ls_get_role(channel, vote) ~= "scientist") then
+          ls_incr_stats_user(player, "vote_team")
+        else
+          ls_incr_stats_user(player, "vote_enemy")
+        end
+
+        ls_incr_stats_user(player, "vote_" .. ls_get_role(channel, vote))
+      end
+
+      if not result.votes[vote] then
+        result.votes[vote] = 0
+        table.insert(result.votees, vote)
+      end
+      result.votes[vote] = result.votes[vote] + 1
+    else
+      table.insert(result.missing_votes, player)
+    end
+
+  end
+
+  local function votecomp(v1, v2)
+    if result.votes[v1] > result.votes[v2] then
+      return true
+    end
+    return false
+  end
+
+  table.sort(result.votees, votecomp)
+
+  return result
+end
+
 function ls_get_active(channel, numeric)
   return ls_gamestate[channel]["players"][numeric]["active"]
 end
@@ -2037,13 +2116,7 @@ function ls_advance_state(channel, delayed)
   end
 
   if state == "vote" then
-    local missing_votes = {}
-
-    for _, player in pairs(players) do
-      if not ls_get_vote(channel, player) then
-        table.insert(missing_votes, player)
-      end
-    end
+    local voteresult = ls_get_vote_result(channel, true)
 
     if timeout == -1 then
       for _, player in pairs(players) do
@@ -2052,59 +2125,17 @@ function ls_advance_state(channel, delayed)
 
       ls_chanmsg(channel, "It's now up to the citizens to vote who to lynch (via /notice " .. BOTNICK .. " vote <nick>).")
       ls_set_timeout(channel, 120)
-    elseif ls_timeout_exceeded(channel) or table.getn(missing_votes) == 0 then
-      local votes = {}
-      local votees = {}
-
-      for _, player in pairs(players) do
-        local vote = ls_get_vote(channel, player)
-
-        if vote then
-          if (ls_get_role(channel, player) == "scientist" and ls_get_role(channel, vote) == "scientist") or (ls_get_role(channel, player) ~= "scientist" and ls_get_role(channel, vote) ~= "scientist") then
-            ls_incr_stats_user(player, "vote_team")
-          else
-            ls_incr_stats_user(player, "vote_enemy")
-          end
-
-          ls_incr_stats_user(player, "vote_" .. ls_get_role(channel, vote))
-
-          if not votes[vote] then
-            votes[vote] = 0
-            table.insert(votees, vote)
-          end
-
-          votes[vote] = votes[vote] + 1
-        end
-      end
-
-      local function votecomp(v1, v2)
-        if votes[v1] > votes[v2] then
-          return true
-        end
-      end
-
-      table.sort(votees, votecomp)
-
+    elseif ls_timeout_exceeded(channel) or table.getn(voteresult.missing_votes) == 0 then
       local message_suffix, candidates
 
-      if table.getn(votees) > 0 then
-        local message = ""
+      if table.getn(voteresult.votees) > 0 then
+        ls_show_votes(channel, voteresult, true)
 
-        for _, votee in pairs(votees) do
-          if message ~= "" then
-            message = message .. ", "
-          end
-
-          message = message .. votes[votee] .. "x " .. ls_format_player(channel, votee)
-        end
-
-        ls_chanmsg(channel, "Votes: " .. message)
-
-        local most_votes = votes[votees[1]]
+        local most_votes = voteresult.votes[voteresult.votees[1]]
         candidates = {}
 
-        for _, votee in pairs(votees) do
-          if votes[votee] == most_votes then
+        for _, votee in pairs(voteresult.votees) do
+          if voteresult.votes[votee] == most_votes then
             table.insert(candidates, votee)
           end
         end
@@ -2148,7 +2179,7 @@ function ls_advance_state(channel, delayed)
       ls_set_state(channel, "kill")
       ls_advance_state(channel)
     elseif delayed then
-      ls_chanmsg(channel, "Some of the citizens still need to vote: " .. ls_format_players(channel, missing_votes))
+      ls_show_votes(channel, voteresult, false)
     end
   end
 end
