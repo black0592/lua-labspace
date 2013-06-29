@@ -621,7 +621,7 @@ function ls_cmd_wait(channel, numeric)
     return
   end
 
-  if table.getn(ls_get_players(channel)) >= MINPLAYERS then
+  if table.getn(ls_get_players(channel)) >= MINPLAYERS and not onstaff(numeric) then
     local count = ls_get_waitcount(channel)
 
     if count >= 2 then
