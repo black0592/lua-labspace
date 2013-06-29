@@ -2273,7 +2273,7 @@ function ls_advance_state(channel, delayed)
 
         ls_chanmsg(channel, ls_format_player(channel, victim, true) .. " " .. message_suffix)
 
-        if ls_get_note(channel, victimnumeric) then
+        if ls_get_note(channel, victim) then
           ls_chanmsg(channel, "While preparing the body for the funeral a note is found in the victim's jacket: " .. ls_get_note(channel, victimnumeric))
         end
 
