@@ -143,6 +143,14 @@ function gamehandler(target, revent, ...)
         ls_cmd_vote(numeric, argument)
       elseif command == "guard" then
         ls_cmd_guard(numeric, argument)
+      elseif command == "note" then
+        local message
+
+        if table.getn(tokens) > 1 then
+          message = table.concat(tokens, " ", 2)
+        end
+
+        ls_cmd_note(numeric, message)
       elseif command == "stats" then
         ls_cmd_stats(numeric, argument)
       elseif command == "help" then
@@ -838,6 +846,10 @@ function ls_cmd_kill(numeric, victim)
     
     ls_chanmsg(channel, "An alien bursts out of " .. ls_format_player(channel, victimnumeric, true) .. "'s chest just as " .. ls_format_player(channel, numeric, true) .. " was about to murder them, killing them both.")
 
+    if ls_get_trait(channel, victimnumeric, "note") then
+      ls_chanmsg(channel, ls_format_player(channel, victimnumeric) .. " seems to have had a note on him but there are teeth marks and unintelligible blotches of ink all over it.")
+    end
+
     ls_incr_stats_user(numeric, "kill_infested")
     ls_incr_stats_user(numeric, "killed_scientist")
     ls_incr_stats_user(victimnumeric, "kill_scientist")
@@ -858,6 +870,10 @@ function ls_cmd_kill(numeric, victim)
 
       if ls_get_role(channel, victimnumeric) == "scientist" then
         ls_chanmsg(channel, ls_format_player(channel, victimnumeric, true) .. " was brutally murdered. Oops.")
+
+        if ls_get_note(channel, victimnumeric) then
+          ls_chanmsg(channel, "He seems to have left us a note: " .. ls_get_note(channel, victimnumeric))
+        end
       else
         local killmessage = KILLMESSAGES[math.random(table.getn(KILLMESSAGES))]
 
@@ -875,6 +891,10 @@ function ls_cmd_kill(numeric, victim)
 
         ls_chanmsg(channel, ls_format_player(channel, victimnumeric, true) .. space .. killmessage)
       end
+    end
+
+    if ls_get_note(channel, victimnumeric) then
+      ls_chanmsg(channel, "The citizens find a note next to the body: " .. ls_get_note(channel, victimnumeric))
     end
 
     ls_remove_player(channel, victimnumeric, true)
@@ -1076,6 +1096,33 @@ function ls_cmd_guard(numeric, victim)
   end
 end
 
+function ls_cmd_note(numeric, message)
+  if not message then
+    ls_notice(numeric, "Syntax: note <message>")
+    return
+  end
+
+  local channel = ls_chan_for_numeric(numeric)
+
+  if not channel then
+    ls_notice(numeric, "You haven't joined any game lobby.")
+    return
+  end
+
+  if not ls_get_trait(channel, numeric, "note") then
+    ls_notice(numeric, "Sorry, you need a piece of paper to use this command.")
+    return
+  end
+
+  if ls_get_note(channel, numeric) then
+    ls_notice(numeric, "You've run out of space on your piece of paper. Maybe in your next life.")
+    return
+  end
+
+  ls_set_note(channel, numeric, message)
+  ls_notice(numeric, "You scribble on your piece of paper: " .. message)
+end
+
 function round(num, idp)
   local mult = 10^(idp or 0)
   return math.floor(num * mult + 0.5) / mult
@@ -1153,7 +1200,7 @@ function ls_cmd_stats(numeric, victim)
     timeinfo = getter("game_time") .. " seconds"
   end
 
-  ls_notice(numeric, "Game time: " timeinfo)
+  ls_notice(numeric, "Game time: " .. timeinfo)
 
   ls_notice(numeric, "Roles: " ..
     getter("role_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
@@ -1526,6 +1573,7 @@ function ls_add_player(channel, numeric, forced)
 
   ls_set_role(channel, numeric, "lobby")
   ls_set_seen(channel, numeric, os.time())
+  ls_set_note(channel, numeric, nil)
 
   if not forced then
     ls_set_announced(channel, numeric, false)
@@ -1687,6 +1735,14 @@ end
 
 function ls_set_guarded(channel, numeric, guarded)
   ls_gamestate[channel]["players"][numeric]["guarded"] = guarded
+end
+
+function ls_get_note(channel, numeric, note)
+  return ls_gamestate[channel]["players"][numeric]["note"]
+end
+
+function ls_set_note(channel, numeric, note)
+  ls_gamestate[channel]["players"][numeric]["note"] = note
 end
 
 function ls_get_seen(channel, numeric)
@@ -1927,6 +1983,12 @@ function ls_start_game(channel)
   else
     teleporter_candidates = ls_get_players(channel, "scientist")
   end
+
+  -- give someone the note
+  local note_owner = players[math.random(table.getn(players))]
+  ls_set_trait(channel, note_owner, "note", true)
+  ls_incr_stats_user(note_owner, "trait_note")
+  ls_notice(note_owner, "You've found a \002piece of paper\002 and a pen. Use /notice " .. BOTNICK .. " note <message> to write a message.")
 
   local teleporter_owner = teleporter_candidates[math.random(table.getn(teleporter_candidates))]
   ls_set_trait(channel, teleporter_owner, "teleporter", true)
@@ -2210,6 +2272,11 @@ function ls_advance_state(channel, delayed)
         ls_devoice_player(channel, victim)
 
         ls_chanmsg(channel, ls_format_player(channel, victim, true) .. " " .. message_suffix)
+
+        if ls_get_note(channel, victimnumeric) then
+          ls_chanmsg(channel, "While preparing the body for the funeral a note is found in the victim's jacket: " .. ls_get_note(channel, victimnumeric))
+        end
+
         ls_remove_player(channel, victim, true)
       end
 
