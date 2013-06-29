@@ -1143,7 +1143,17 @@ function ls_cmd_stats(numeric, victim)
     end
   end
 
-  ls_notice(numeric, "Game time: " .. round(getter("game_time") / 60, 2) .. " minutes")
+  local time = getter("game_time")
+
+  if time > 3600 then
+    timeinfo = round(getter("game_time") / 3600, 2) .. " hours"
+  elseif time > 60 then
+    timeinfo = round(getter("game_time") / 60, 2) .. " minutes"
+  else
+    timeinfo = getter("game_time") .. " seconds"
+  end
+
+  ls_notice(numeric, "Game time: " timeinfo)
 
   ls_notice(numeric, "Roles: " ..
     getter("role_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
