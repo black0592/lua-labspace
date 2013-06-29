@@ -308,6 +308,8 @@ function ls_format_trait(trait)
     return "Alien Parasite"
   elseif trait == "force" then
     return "Force Field Generator"
+  elseif trait == "note" then
+    return "Pen & Paper"
   else
     return "Unknown Trait"
   end
