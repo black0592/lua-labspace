@@ -1212,7 +1212,8 @@ function ls_cmd_stats(numeric, victim)
   ls_notice(numeric, "Traits: " ..
     getter("trait_teleporter") .. "x " .. ls_format_trait("teleporter") .. ", " ..
     getter("trait_infested") .. "x " .. ls_format_trait("infested") .. ", " ..
-    getter("trait_force") .. "x " .. ls_format_trait("force"))
+    getter("trait_force") .. "x " .. ls_format_trait("force") .. ", " ..
+    getter("trait_note") .. "x " .. ls_format_trait("note"))
 
   ls_notice(numeric, "Won games as: " ..
     getter("won_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
