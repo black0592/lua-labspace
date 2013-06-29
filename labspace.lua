@@ -1939,8 +1939,12 @@ end
 
 -- makes sure people are not afk
 function ls_check_alive(channel)
+  local timeout
+
   if not ls_game_in_progress(channel) then
-    return
+    timeout = 300
+  else
+    timeout = 120
   end
 
   local dead_players = {}
@@ -1950,9 +1954,9 @@ function ls_check_alive(channel)
     local seen = ls_get_seen(channel, player)
 
     if seen then
-      if seen < os.time() - 150 then
+      if seen < os.time() - timeout then
         table.insert(dead_players, player)
-      elseif seen < os.time() - 60 then
+      elseif seen < os.time() - timeout / 3 - 30 then
         table.insert(idle_players, player)
       end
     end
