@@ -388,6 +388,10 @@ function ls_get_waitcount(channel)
   return ls_gamestate[channel]["waitcount"]
 end
 
+function ls_get_round(channel)
+  return ls_gamestate[channel]["round"]
+end
+
 -- sets the game state
 function ls_set_state(channel, state)
   ls_gamestate[channel]["state"] = state
@@ -427,6 +431,10 @@ end
 
 function ls_set_waitcount(channel, count)
   ls_gamestate[channel]["waitcount"] = count
+end
+
+function ls_set_round(channel, number)
+  ls_gamestate[channel]["round"] = number
 end
 
 -- returns true if the game state timeout was exceeded, false otherwise
@@ -1156,6 +1164,8 @@ function ls_cmd_stats(numeric, victim)
     getter("survived_chance") .. "x chance, " ..
     getter("survived_guarded") .. "x being guarded with a force field")
 
+  ls_notice(numeric, "Survived rounds: " .. getter("survived_round"))
+
   ls_notice(numeric, "Active role: " ..
     getter("active_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
     getter("active_investigator") .. "x " .. ls_format_role("investigator"))
@@ -1828,6 +1838,7 @@ function ls_start_game(channel)
 
   ls_incr_stats_channel(channel, "game_count")
   ls_set_startts(channel, os.time())
+  ls_set_round(channel, 0)
 
   for _, player in pairs(players) do
     ls_set_role(channel, player, "lobby")
@@ -2065,10 +2076,21 @@ function ls_advance_state(channel, delayed)
         end
       end
 
+      local round = ls_get_round(channel) + 1
+      ls_set_round(channel, round)
+
+      if round > 1 then
+        for _, player in pairs(players) do
+          ls_incr_stats_user(player, "survived_round")
+        end
+      end
+
+      local roundinfo = "Round #" .. round
+
       if table.getn(scientists) > 1 then
-        ls_chanmsg(channel, "The citizens are asleep while the mad scientists are choosing a target.")
+        ls_chanmsg(channel, roundinfo .. ": The citizens are asleep while the mad scientists are choosing a target.")
       else
-        ls_chanmsg(channel, "The citizens are asleep while the mad scientist is choosing a target.")
+        ls_chanmsg(channel, roundinfo .. ": The citizens are asleep while the mad scientist is choosing a target.")
       end
 
       ls_set_timeout(channel, 120)
