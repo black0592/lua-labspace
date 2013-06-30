@@ -1740,7 +1740,7 @@ function ls_set_guarded(channel, numeric, guarded)
   ls_gamestate[channel]["players"][numeric]["guarded"] = guarded
 end
 
-function ls_get_note(channel, numeric, note)
+function ls_get_note(channel, numeric)
   return ls_gamestate[channel]["players"][numeric]["note"]
 end
 
