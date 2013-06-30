@@ -262,6 +262,10 @@ function ontick()
     end
   end
 
+  for channel, _ in pairs(ls_gamestate) do
+    ls_check_shield(channel)
+  end
+
   if ls_lastsave < os.time() - 60 then
     ls_lastsave = os.time()
     ls_dbsave()
@@ -369,6 +373,10 @@ function ls_get_startts(channel)
   return ls_gamestate[channel]["startts"]
 end
 
+function ls_get_overloadts(channel)
+  return ls_gamestate[channel]["overloadts"]
+end
+
 -- gets the timeout for the current state
 function ls_get_timeout(channel)
   return ls_gamestate[channel]["timeout"]
@@ -412,6 +420,10 @@ end
 
 function ls_set_startts(channel, startts)
   ls_gamestate[channel]["startts"] = startts
+end
+
+function ls_set_overloadts(channel, overloadts)
+  ls_gamestate[channel]["overloadts"] = overloadts
 end
 
 -- sets the game state timeout (in seconds)
@@ -1907,6 +1919,7 @@ function ls_start_game(channel)
 
   ls_incr_stats_channel(channel, "game_count")
   ls_set_startts(channel, os.time())
+  ls_set_overloadts(channel, nil)
   ls_set_round(channel, 0)
 
   for _, player in pairs(players) do
@@ -2066,6 +2079,18 @@ function ls_check_alive(channel)
   end
 end
 
+function ls_check_shield(channel)
+  -- shield generator overload
+  if ls_get_overloadts(channel) and ls_get_overloadts(channel) < os.time() then
+    for _, player in pairs(ls_get_players(channel)) do
+      if ls_get_guarded(channel, player) and ls_get_trait(channel, player, "force") then
+        ls_chanmsg(channel, ls_format_player(channel, player, true) .. "'s shield generator blew up.")
+        ls_remove_player(channel, player, true)
+      end
+    end
+  end
+end
+
 function ls_advance_state(channel, delayed)
   if delayed and not ls_delay_exceeded(channel) then
     return
@@ -2158,6 +2183,16 @@ function ls_advance_state(channel, delayed)
         for _, player in pairs(players) do
           ls_incr_stats_user(player, "survived_round")
         end
+      end
+
+      if round == 2 then
+        for _, player in pairs(players) do
+          if ls_get_guarded(channel, player) and ls_get_trait(channel, player, "force") then
+            ls_notice(player, "You feel your shield generator overheating, you may want to do something about this, just as a hint... The display reads in menacingly red letters: 15 seconds remain.")
+          end
+        end
+
+        ls_set_overloadts(channel, os.time() + 15)
       end
 
       local roundinfo = "Round #" .. round
