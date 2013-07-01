@@ -762,6 +762,10 @@ function ls_cmd_hl(channel, numeric)
   if table.getn(numerics) > 0 then
     irc_localchanmsg(ls_hlbot, channel, "HL: " .. ls_format_players(channel, numerics, false, false, true))
   end
+  ls_chanmsg(channel, "Lobby timeout was reset - waiting for another 120 seconds.")
+
+  ls_set_timeout(channel, 120)
+  ls_set_delay(channel, 45)
 end
 
 function ls_cmd_enable(channel, numeric)
