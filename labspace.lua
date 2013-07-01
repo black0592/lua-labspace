@@ -652,7 +652,10 @@ function ls_cmd_wait(channel, numeric)
   ls_set_timeout(channel, 120)
   ls_set_delay(channel, 45)
 
-  ls_chanmsg(channel, "Lobby timeout was reset.")
+  ls_chanmsg(channel, "Lobby timeout was reset - waiting for another 120 seconds.")
+  if table.getn(ls_get_players(channel)) >= MINPLAYERS then
+    ls_chanmsg(channel, "To start the game immediately please use !start")
+  end
 end
 
 function ls_cmd_start(channel, numeric)
