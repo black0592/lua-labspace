@@ -2138,16 +2138,18 @@ function ls_advance_state(channel, delayed)
 
   -- winning condition for scientists
   if table.getn(scientists) >= table.getn(players) - table.getn(scientists) then
+    local losers = {}
     for _, player in pairs(players) do
       if ls_get_role(channel, player) == "scientist" then
         ls_incr_stats_user(player, "kill_tied")
         ls_incr_stats_user(player, "won_scientist")
       else
+        table.insert(losers, player)
         ls_incr_stats_user(player, "killed_tied")
       end
     end
 
-    ls_chanmsg(channel, "There are equal to or more scientists than citizens. Science wins again: " .. ls_format_players(channel, scientists, true, true))
+    ls_chanmsg(channel, "There are equal to or more scientists than citizens. Science wins again: " .. ls_format_players(channel, scientists, true, true) .. ". They slaughter the surviving citizens: " .. ls_format_players(channel, losers, true, true) .. ".")
     ls_stop_game(channel)
     return
   end
