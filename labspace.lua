@@ -1983,15 +1983,17 @@ function ls_start_game(channel)
   end  
 
   -- give someone the force field generator
-  local force_owner = players[math.random(table.getn(players))]
-  ls_set_trait(channel, force_owner, "force", true)
-  ls_incr_stats_user(force_owner, "trait_force")
-  ls_set_guarded(channel, force_owner, true)
-  ls_notice(force_owner, "You've found the \002force field generator\002. Use /notice " .. BOTNICK .. " guard <nick> to protect someone.")
-  ls_notice(force_owner, "You are currently protecting yourself.")
+  if table.getn(ls_get_players(channel)) >= 8 then
+    local force_owner = players[math.random(table.getn(players))]
+    ls_set_trait(channel, force_owner, "force", true)
+    ls_incr_stats_user(force_owner, "trait_force")
+    ls_set_guarded(channel, force_owner, true)
+    ls_notice(force_owner, "You've found the \002force field generator\002. Use /notice " .. BOTNICK .. " guard <nick> to protect someone.")
+    ls_notice(force_owner, "You are currently protecting yourself.")
+  end
 
-  -- make someone infested if there are at least 6 citizens
-  if table.getn(players) > 6 then
+  -- make someone infested
+  if table.getn(ls_get_players(channel)) >= 10 then
     local infested_player = players[math.random(table.getn(players))]
     ls_set_trait(channel, infested_player, "infested", true)
     ls_incr_stats_user(infested_player, "trait_infested")
