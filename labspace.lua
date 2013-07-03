@@ -1274,7 +1274,7 @@ function ls_cmd_stats(numeric, victim)
     getter("killed_smite") .. "x lightning, " ..
     getter("killed_bomb") .. "x bomb")
 
-  ls_notice(numeric, "Revealed investigations: " .. getter("investigation_revealed"))
+  ls_notice(numeric, "Revealed investigations: " .. getter("investigate_revealed"))
 
   ls_notice(numeric, "Investigated: " ..
     getter("investigate_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
