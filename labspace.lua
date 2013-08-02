@@ -191,7 +191,7 @@ function highlighthandler(target, revent, ...)
     ls_hlbot = nil
   elseif revent == "irc_onkillreconnect" then
     ls_hlbot = target
-    ls_localjoin(ls_hlbot, HOMECHANNEL)
+    irc_localjoin(ls_hlbot, HOMECHANNEL)
   end
 end
 
