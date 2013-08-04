@@ -297,6 +297,8 @@ function ls_format_role(role)
     return "Investigator"
   elseif role == "citizen" then
     return "Citizen"
+  elseif role == "idiot" then
+    return "Village Idiot"
   elseif role == "lobby" then
     return "Lobby"
   else
@@ -691,6 +693,7 @@ function ls_show_status(channel)
     ls_chanmsg(channel, "Roles: " ..
       table.getn(ls_get_players(channel, "scientist")) .. "x " .. ls_format_role("scientist") .. ", " ..
       table.getn(ls_get_players(channel, "investigator")) .. "x " .. ls_format_role("investigator") .. ", " ..
+      table.getn(ls_get_players(channel, "idiot")) .. "x " .. ls_format_role("idiot") .. ", " ..
       table.getn(ls_get_players(channel, "citizen")) .. "x " .. ls_format_role("citizen"))
 
     if ls_get_state(channel) == "vote" then
@@ -1226,6 +1229,7 @@ function ls_cmd_stats(numeric, victim)
   ls_notice(numeric, "Roles: " ..
     getter("role_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
     getter("role_investigator") .. "x " .. ls_format_role("investigator") .. ", " ..
+    getter("role_idiot") .. "x " .. ls_format_role("idiot") .. ", " ..
     getter("role_citizen") .. "x " .. ls_format_role("citizen"))
 
   ls_notice(numeric, "Traits: " ..
@@ -1237,6 +1241,7 @@ function ls_cmd_stats(numeric, victim)
   ls_notice(numeric, "Won games as: " ..
     getter("won_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
     getter("won_investigator") .. "x " .. ls_format_role("investigator") .. ", " ..
+    getter("won_idiot") .. "x " .. ls_format_role("idiot") .. ", " ..
     getter("won_citizen") .. "x " .. ls_format_role("citizen"))
 
   ls_notice(numeric, "Survived attacks by: " ..
@@ -1290,6 +1295,7 @@ function ls_cmd_stats(numeric, victim)
   ls_notice(numeric, "Votes by target role: " ..
     getter("vote_scientist") .. "x " .. ls_format_role("scientist") .. ", " ..
     getter("vote_investigator") .. "x " .. ls_format_role("investigator") .. ", " ..
+    getter("vote_idiot") .. "x " .. ls_format_role("idiot") .. ", " ..
     getter("vote_citizen") .. "x " .. ls_format_role("citizen"))
 
   ls_notice(numeric, "Teleporter usage: " ..
@@ -1906,6 +1912,10 @@ function ls_number_investigators(numPlayers)
   return math.ceil((numPlayers - 5) / 6.0)
 end
 
+function ls_needs_idiot(numPlayers)
+    return numPlayers > 9
+end
+
 function ls_start_game(channel)
   local players = ls_get_players(channel)
 
@@ -1971,6 +1981,14 @@ function ls_start_game(channel)
         ls_notice(investigator_notify, ls_format_player(channel, investigator) .. " is also an investigator.")
       end
     end
+  end
+
+  -- one village idiot is plenty, the game becomes hell otherwise, but don't
+  -- generate one if there are few players because you need time to figure that
+  -- role out
+  if ls_needs_idiot(players_count) then
+    local idiot_index = math.random(table.getn(players))
+    ls_set_role(channel, table.remove(players, idiot_index), "idiot")
   end
 
   -- rest of the players are citizens
@@ -2324,6 +2342,27 @@ function ls_advance_state(channel, delayed)
 
         if ls_get_note(channel, victim) then
           ls_chanmsg(channel, "While preparing the body for the funeral a note is found in the victim's jacket: " .. ls_get_note(channel, victim))
+        end
+
+        -- idiot winning condition
+        -- Loss by tie is impossible at this point.
+        -- Keeping table even if there's only one idiot in case someone decides
+        -- we do need more idiots after all.
+        if ls_get_role(channel, victim) == "idiot" then
+          local losers = {}
+          local idiots = {}
+          for _, player in pairs(players) do
+            if ls_get_role(channel, player) == "idiot" then
+              table.insert(idiots, player)
+              ls_incr_stats_user(player, "won_idiot")
+            else
+              table.insert(losers, player)
+            end
+          end
+
+          ls_chanmsg(channel, "The village idiot supreme by sheer idiocy once more: " .. ls_format_players(channel, idiots, true, true) .. ". The remaining people cheer so joyfully that they combust spontaneously: " .. ls_format_players(channel, losers, true, true) .. ". The Village Idiot wins!")
+          ls_stop_game(channel)
+          return
         end
 
         ls_remove_player(channel, victim, true)
