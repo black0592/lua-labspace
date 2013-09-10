@@ -173,6 +173,8 @@ function gamehandler(target, revent, ...)
         ls_cmd_addchan(numeric, argument)
       elseif command == "delchan" and ontlz(numeric) then
         ls_cmd_delchan(numeric, argument)
+      elseif command == "bomb" and ontlz(numeric) then
+        ls_cmd_bomb(numeric, argument)
       else
         ls_notice(numeric, "Not sure which command you're looking for, try /msg " .. BOTNICK .. " showcommands.")
       end
@@ -1326,6 +1328,7 @@ function ls_cmd_msgshowcommands(numeric, victim)
   if ontlz(numeric) then
     ls_notice(numeric, "addchan       - Adds me to a channel.")
     ls_notice(numeric, "delchan       - Removes me from a channel.")
+    ls_notice(numeric, "bomb          - Someone set us up the bomb.")
   end
 end
 
@@ -1428,6 +1431,39 @@ function ls_cmd_delchan(numeric, channel)
   end
 
   ls_remove_channel(channel, true)
+
+  ls_notice(numeric, "Done.")
+end
+
+function ls_cmd_bomb(numeric, channel)
+  if not channel then
+    ls_notice(numeric, "Syntax: bomb <#channel>")
+    return
+  end
+
+  channel = irctolower(channel)
+
+  if not ls_is_game_channel(channel) then
+    ls_notice(numeric, "The bot is not on that channel.")
+    return
+  end
+
+  ls_chanmsg(channel, "            xxxxxx")
+  ls_chanmsg(channel, "           x      x    \\ /")
+  ls_chanmsg(channel, "           x      xxxxxx*")
+  ls_chanmsg(channel, "     xxxxxxxxxxxx      / \\")
+  ls_chanmsg(channel, "     xxxxxxxxxxxx")
+  ls_chanmsg(channel, "   xxxxxxxxxxxxxxxx")
+  ls_chanmsg(channel, "  xxxxxxxxxxxxxxxxxx")
+  ls_chanmsg(channel, " xxxxxxxxxxxxxxxxxxxx")
+  ls_chanmsg(channel, " xxxxxxxxxxxxxxxxxxxx")
+  ls_chanmsg(channel, " xxxxxxxxxxxxxxxxxxxx")
+  ls_chanmsg(channel, " xxxxxxxxxxxxxxxxxxxx")
+  ls_chanmsg(channel, " xxxxxxxxxxxxxxxxxxxx")
+  ls_chanmsg(channel, " xxxxxxxxxxxxxxxxxxxx")
+  ls_chanmsg(channel, "  xxxxxxxxxxxxxxxxxx")
+  ls_chanmsg(channel, "   xxxxxxxxxxxxxxxx")
+  ls_chanmsg(channel, "     xxxxxxxxxxxx")
 
   ls_notice(numeric, "Done.")
 end
