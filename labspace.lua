@@ -328,8 +328,13 @@ end
 function ls_format_player(channel, numeric, reveal_role, reveal_traits)
   local nick = irc_getnickbynumeric(numeric)
   local result = "\002" .. nick.nick .. "\002"
-
+  
   if reveal_role then
+    if ls_get_hiddenrole(channel) then
+      result = result .. " (???)"
+      return result
+    end
+
     result = result .. " (" .. ls_format_role(ls_get_role(channel, numeric))
     
     if reveal_traits then
@@ -381,6 +386,11 @@ function ls_get_overloadts(channel)
   return ls_gamestate[channel]["overloadts"]
 end
 
+-- gets the hidden role flag
+function ls_get_hiddenrole(channel)
+  return ls_gamestate[channel]["hiddenrole"]
+end
+
 -- gets the timeout for the current state
 function ls_get_timeout(channel)
   return ls_gamestate[channel]["timeout"]
@@ -428,6 +438,11 @@ end
 
 function ls_set_overloadts(channel, overloadts)
   ls_gamestate[channel]["overloadts"] = overloadts
+end
+
+-- sets the hiddenrole flag
+function ls_set_hiddenrole(channel, enabled)
+  ls_gamestate[channel]["hiddenrole"] = enabled
 end
 
 -- sets the game state timeout (in seconds)
@@ -692,11 +707,13 @@ function ls_show_status(channel)
   ls_chanmsg(channel, "Players: " .. ls_format_players(channel, ls_get_players(channel)))
 
   if ls_game_in_progress(channel) then
-    ls_chanmsg(channel, "Roles: " ..
-      table.getn(ls_get_players(channel, "scientist")) .. "x " .. ls_format_role("scientist") .. ", " ..
-      table.getn(ls_get_players(channel, "investigator")) .. "x " .. ls_format_role("investigator") .. ", " ..
-      table.getn(ls_get_players(channel, "idiot")) .. "x " .. ls_format_role("idiot") .. ", " ..
-      table.getn(ls_get_players(channel, "citizen")) .. "x " .. ls_format_role("citizen"))
+    if not ls_get_hiddenrole(channel) then
+      ls_chanmsg(channel, "Roles: " ..
+        table.getn(ls_get_players(channel, "scientist")) .. "x " .. ls_format_role("scientist") .. ", " ..
+        table.getn(ls_get_players(channel, "investigator")) .. "x " .. ls_format_role("investigator") .. ", " ..
+        table.getn(ls_get_players(channel, "idiot")) .. "x " .. ls_format_role("idiot") .. ", " ..
+        table.getn(ls_get_players(channel, "citizen")) .. "x " .. ls_format_role("citizen"))
+    end
 
     if ls_get_state(channel) == "vote" then
       local voteresult = ls_get_vote_result(channel, false)
@@ -1549,7 +1566,7 @@ function ls_timer_announce_players(channel)
 end
 
 function ls_add_channel(channel)
-  ls_gamestate[channel] = { players = {}, state = "lobby", timeout = -1, delay = os.time() + 30, waitcount = 0, lasthl = 0, enabled = true }
+  ls_gamestate[channel] = { players = {}, state = "lobby", timeout = -1, delay = os.time() + 30, waitcount = 0, lasthl = 0, hiddenrole = false, enabled = true }
   irc_localjoin(ls_bot, channel)
   irc_localsimplechanmode(ls_bot, channel, "-m")
 end
@@ -1974,7 +1991,8 @@ function ls_start_game(channel)
   ls_set_startts(channel, os.time())
   ls_set_overloadts(channel, nil)
   ls_set_round(channel, 0)
-
+  ls_set_hiddenrole(channel, false)
+  
   for _, player in pairs(players) do
     ls_set_role(channel, player, "lobby")
     ls_keepalive(channel, player)
@@ -2010,7 +2028,7 @@ function ls_start_game(channel)
     investigators_count = investigators_count + 1
   end
 
-  -- notify scientists about each other
+  -- notify investigators about each other
   for _, investigator in pairs(ls_get_players(channel, "investigator")) do
     for _, investigator_notify in pairs(ls_get_players(channel, "investigator")) do
       if investigator ~= investigator_notify then
@@ -2076,6 +2094,10 @@ function ls_start_game(channel)
 
   ls_set_state(channel, "kill")
   ls_show_status(channel)
+
+  if math.random(100) > 90 then
+    ls_set_hiddenrole(channel, true)
+  end
 
   ls_advance_state(channel)
 end
@@ -2205,6 +2227,7 @@ function ls_advance_state(channel, delayed)
       end
     end
 
+    ls_set_hiddenrole(channel, false)
     ls_chanmsg(channel, "There are equal to or more scientists than citizens. Science wins again: " .. ls_format_players(channel, scientists, true, true) .. ". They slaughter the surviving citizens: " .. ls_format_players(channel, losers, true, true) .. ".")
     ls_stop_game(channel)
     return
@@ -2215,7 +2238,8 @@ function ls_advance_state(channel, delayed)
     for _, player in pairs(players) do
       ls_incr_stats_user(player, "won_" .. ls_get_role(channel, player))
     end
-
+    
+    ls_set_hiddenrole(channel, false)
     ls_chanmsg(channel, "All scientists have been eliminated. The citizens win this round: " .. ls_format_players(channel, players, true, true))
     ls_stop_game(channel)
     return
@@ -2279,41 +2303,53 @@ function ls_advance_state(channel, delayed)
   end
 
   if state == "investigate" then
-    -- the investigators are already dead
-    if table.getn(investigators) == 0 then
+
+    if table.getn(investigators) == 0 and not ls_get_hiddenrole(channel) then
       ls_set_state(channel, "vote")
       ls_advance_state(channel)
       return
     end
 
     if timeout == -1 then
-      local active_investigator = investigators[math.random(table.getn(investigators))]
+      if table.getn(investigators) > 0 then
+        local active_investigator = investigators[math.random(table.getn(investigators))]
 
-      for _, investigator in pairs(investigators) do
-        if investigator == active_investigator then
-          ls_set_active(channel, investigator, true)
-          ls_incr_stats_user(investigator, "active_investigator")
-          ls_notice(investigator, "You need to choose someone to investigate: /notice " .. BOTNICK .. " investigate <nick>")
-        else
-          ls_set_active(channel, investigator, false)
-          ls_incr_stats_user(investigator, "inactive_investigator")
-          ls_notice(investigator, "Another investigator is choosing a target.")
+        for _, investigator in pairs(investigators) do
+          if investigator == active_investigator then
+            ls_set_active(channel, investigator, true)
+            ls_incr_stats_user(investigator, "active_investigator")
+            ls_notice(investigator, "You need to choose someone to investigate: /notice " .. BOTNICK .. " investigate <nick>")
+          else
+            ls_set_active(channel, investigator, false)
+            ls_incr_stats_user(investigator, "inactive_investigator")
+            ls_notice(investigator, "Another investigator is choosing a target.")
+          end
         end
       end
+      
+      if not ls_get_hiddenrole(channel) then
+        if table.getn(investigators) > 1 then
+          ls_chanmsg(channel, "It's now up to the investigators to find the mad scientists.")
+        else
+          ls_chanmsg(channel, "It's now up to the investigator to find the mad scientists.")
+        end
 
-      if table.getn(investigators) > 1 then
-        ls_chanmsg(channel, "It's now up to the investigators to find the mad scientists.")
+        ls_set_timeout(channel, 120)
       else
-        ls_chanmsg(channel, "It's now up to the investigator to find the mad scientists.")
+        ls_chanmsg(channel, "An unknown force has frozen space and time to investigate these suspicious deaths.")
+        ls_set_timeout(channel, 10 + math.random(10))
       end
-
-      ls_set_timeout(channel, 120)
+      
     elseif ls_timeout_exceeded(channel) then
-      ls_chanmsg(channel, "Looks like the investigator is still firmly asleep.")
+      if not ls_get_hiddenrole(channel) then
+        ls_chanmsg(channel, "Looks like the investigator is still firmly asleep.")
+      end
       ls_set_state(channel, "vote")
       ls_advance_state(channel)
     else
-      ls_chanmsg(channel, "The investigator still needs to do their job.");
+      if not ls_get_hiddenrole(channel) then
+        ls_chanmsg(channel, "The investigator still needs to do their job.")
+      end
     end
   end
 
@@ -2396,6 +2432,7 @@ function ls_advance_state(channel, delayed)
             end
           end
 
+          ls_set_hiddenrole(channel, false)
           ls_chanmsg(channel, "The village idiot supreme by sheer idiocy once more: " .. ls_format_players(channel, idiots, true, true) .. ". The remaining people cheer so joyfully that they combust spontaneously: " .. ls_format_players(channel, losers, true, true) .. ". The Village Idiot wins!")
           ls_stop_game(channel)
           return
