@@ -23,6 +23,15 @@ local MINPLAYERS = 6
 local MAXPLAYERS = 30
 local DEBUG = false
 local DB = "labspace.db"
+-- Some settings.
+-- Minimum players for the idiot
+local MINPIDIOT = 10
+-- Minimum players for the alien
+local MINPALIEN = 9
+-- Minimum players for the force field generator
+local MINPFORCE = 8
+-- Maximum players left for the alien to be disabled
+local MAXLALIEN = 5
 
 local KILLMESSAGES = {
   "was brutally murdered.",
@@ -1965,10 +1974,6 @@ function ls_number_investigators(numPlayers)
   return math.ceil((numPlayers - 5) / 6.0)
 end
 
-function ls_needs_idiot(numPlayers)
-    return numPlayers > 9
-end
-
 function ls_start_game(channel)
   local players = ls_get_players(channel)
 
@@ -2040,7 +2045,7 @@ function ls_start_game(channel)
   -- one village idiot is plenty, the game becomes hell otherwise, but don't
   -- generate one if there are few players because you need time to figure that
   -- role out
-  if ls_needs_idiot(players_count) then
+  if players_count >= MINPIDIOT then
     local idiot_index = math.random(table.getn(players))
     ls_set_role(channel, table.remove(players, idiot_index), "idiot")
   end
@@ -2055,7 +2060,7 @@ function ls_start_game(channel)
   end  
 
   -- give someone the force field generator
-  if table.getn(ls_get_players(channel)) >= 8 then
+  if players_count >= MINPFORCE then
     local force_owner = players[math.random(table.getn(players))]
     ls_set_trait(channel, force_owner, "force", true)
     ls_incr_stats_user(force_owner, "trait_force")
@@ -2065,7 +2070,7 @@ function ls_start_game(channel)
   end
 
   -- make someone infested
-  if table.getn(ls_get_players(channel)) >= 10 then
+  if players_count >= MINPALIEN then
     local infested_player = players[math.random(table.getn(players))]
     ls_set_trait(channel, infested_player, "infested", true)
     ls_incr_stats_user(infested_player, "trait_infested")
@@ -2282,6 +2287,18 @@ function ls_advance_state(channel, delayed)
         end
 
         ls_set_overloadts(channel, os.time() + 15)
+      end
+      
+      -- Check if we need to disable the alien.
+      if table.getn(ls_get_players(channel)) <= MAXLALIEN then
+        -- Remove the alien, if there is no alien in the game, nothing happens.
+        for _, player in pairs(players) do
+          if ls_get_trait(channel, player, "infested") then
+            ls_set_trait(channel, player, "infested", false)
+            ls_chanmsg(channel, "\002WARNING\002: The mad scientist has engaged parasite killing defenses.")
+            ls_notice(player, "You get a warm fuzzy feeling and suddenly you notice that your \002alien parasite\002 is gone!")
+          end
+        end
       end
 
       local roundinfo = "Round #" .. round
