@@ -320,7 +320,7 @@ end
 -- formats the specified trait identifier for output in a message
 function ls_format_trait(trait)
   if trait == "teleporter" then
-    return "Personal Teleporter"
+    return "Portal Device"
   elseif trait == "infested" then
     return "Alien Parasite"
   elseif trait == "force" then
@@ -1326,7 +1326,7 @@ function ls_cmd_stats(numeric, victim)
     getter("vote_idiot") .. "x " .. ls_format_role("idiot") .. ", " ..
     getter("vote_citizen") .. "x " .. ls_format_role("citizen"))
 
-  ls_notice(numeric, "Teleporter usage: " ..
+  ls_notice(numeric, "Portal Device usage: " ..
     getter("teleporter_activated") .. "x success (" .. getter("teleporter_intact") .. "x retained, " .. getter("teleporter_destroyed") .. "x destroyed), " ..
     getter("teleporter_failed") .. "x failed")
 end
@@ -2095,7 +2095,7 @@ function ls_start_game(channel)
   local teleporter_owner = teleporter_candidates[math.random(table.getn(teleporter_candidates))]
   ls_set_trait(channel, teleporter_owner, "teleporter", true)
   ls_incr_stats_user(teleporter_owner, "trait_teleporter")
-  ls_notice(teleporter_owner, "You've found the \002personal teleporter\002 (50% chance to evade lynching).")
+  ls_notice(teleporter_owner, "You've found the \002portal device\002.")
 
   ls_set_state(channel, "kill")
   ls_show_status(channel)
@@ -2406,22 +2406,23 @@ function ls_advance_state(channel, delayed)
       local teleporter = ls_get_trait(channel, victim, "teleporter")
 
       if teleporter and math.random(100) > 50 then
-        ls_notice(victim, "You press the button to activate the \002personal teleporter\002... and you safely escape!")
+        ls_notice(victim, "You press the button to activate the \002portal device\002... and you jump in the newly created portal!")
         ls_incr_stats_user(victim, "teleporter_activated")
-        ls_chanmsg(channel, ls_format_player(channel, victim) .. " used their personal teleporter to escape the angry mob.")
+        ls_chanmsg(channel, ls_format_player(channel, victim) .. " used their portal device to escape the angry mob.")
+        ls_notice(victim, "You safely arrive at the other end of the portal.")
         
         if math.random(100) > 50 then
           ls_set_trait(channel, victim, "teleporter", false)
           ls_incr_stats_user(victim, "teleporter_destroyed")
-          ls_notice(victim, "Your \002personal teleporter\002 was destroyed.")
+          ls_notice(victim, "Your \002portal device\002 was accidently left on the other side of the portal and it has already closed.")
         else
           ls_incr_stats_user(victim, "teleporter_intact")
-          ls_notice(channel, victim, "You check your \002personal teleporter\002 after the escape and it is still intact.")
+          ls_notice(channel, victim, "You check your \002portal device\002 after the escape and it seems to work fine.")
         end
       else
         if teleporter then
           ls_incr_stats_user(victim, "teleporter_failed")
-          ls_notice(victim, "You press the button to activate the \002personal teleporter\002... but nothing happens!")
+          ls_notice(victim, "You press the button to activate the \002portal device\002... but nothing happens! Perhaps more testing at Aperture Science is required.")
         end
         
         ls_incr_stats_user(victim, "killed_lynch")
