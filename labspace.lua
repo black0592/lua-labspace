@@ -110,9 +110,11 @@ function gamehandler(target, revent, ...)
     ls_keepalive(channel, numeric)
 
     local tokens = ls_split_message(message)
-    local command = tokens[1]:lower()
+    local command = tokens[1]
 
     if command then
+      command = command:lower()
+
       if command == "!add" then
         ls_cmd_add(channel, numeric)
       elseif command == "!remove" then
